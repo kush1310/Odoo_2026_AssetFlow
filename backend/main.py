@@ -29,44 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Seeding Logic
-def seed_database():
-    db = SessionLocal()
-    try:
-        # 1. Seed Admin User
-        admin_email = "admin@assetflow.com"
-        admin = db.query(models.User).filter(models.User.email == admin_email).first()
-        if not admin:
-            hashed_pass = auth.get_password_hash("pass1111")
-            admin_user = models.User(
-                name="System Admin",
-                email=admin_email,
-                password_hash=hashed_pass,
-                role="Admin",
-                status="Active"
-            )
-            db.add(admin_user)
-            db.commit()
-            print(f"Database Seeded: Created administrator account '{admin_email}' with password 'pass1111'.")
-
-        # 2. Seed Default Categories
-        categories = [
-            {"name": "Electronics", "code": "ELE"},
-            {"name": "Furniture", "code": "FUR"},
-            {"name": "Vehicles", "code": "VEH"}
-        ]
-        for cat in categories:
-            existing = db.query(models.AssetCategory).filter(models.AssetCategory.name == cat["name"]).first()
-            if not existing:
-                new_cat = models.AssetCategory(name=cat["name"], code=cat["code"], status="Active")
-                db.add(new_cat)
-                db.commit()
-                print(f"Database Seeded: Created category '{cat['name']}'.")
-    finally:
-        db.close()
+import seed
 
 # Execute Seed
-seed_database()
+seed.seed_database()
 
 # Register Router
 app.include_router(api_router)

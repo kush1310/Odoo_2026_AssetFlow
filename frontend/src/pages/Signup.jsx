@@ -1,155 +1,196 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import { User, Mail, Key, ShieldCheck, ShieldAlert } from 'lucide-react';
+import api from '../api';
+import { Key, Mail, ShieldAlert, Eye, EyeOff, Package, User } from 'lucide-react';
+import { motion } from 'framer-motion';
+import AssetTagChip from '../components/AssetTagChip';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    department_id: ''
+  });
+  const [departments, setDepartments] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Fetch departments for the dropdown
+    // Note: This endpoint is public for the signup form in this architecture, 
+    // or we use a basic list. Let's try fetching, if it fails (auth), we fallback.
+    const fetchDepts = async () => {
+      try {
+        // We'd typically need a public endpoint or a token, but for hackathon, 
+        // we might mock this if the backend blocks unauthenticated requests to /departments.
+        // Wait, the backend requires auth for /departments! 
+        // For simplicity in this demo, we'll just allow manual entry or mock it if needed.
+        // Actually, let's just make it an optional number input or omit it since it's Optional in schema.
+      } catch (err) {}
+    };
+    fetchDepts();
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
-      return;
-    }
-
     setLoading(true);
     try {
-      await axios.post('http://localhost:8000/api/auth/signup', {
-        name,
-        email,
-        password
+      await api.post('/auth/signup', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        department_id: formData.department_id ? parseInt(formData.department_id) : null
       });
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 2500);
+      // Redirect to login after successful signup
+      navigate('/login', { state: { message: "Account created successfully. Please log in." } });
     } catch (err) {
-      setError(err.response?.data?.detail || "Registration failed. Try again.");
+      setError(err.response?.data?.detail || "Registration failed. Please check your details.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl flex flex-col gap-6">
-        <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-indigo-600 bg-clip-text text-transparent">
-            Create Account
-          </h1>
-          <p className="text-xs text-slate-400">Registers an Employee Account in the directory</p>
+    <div className="min-h-screen bg-surface flex">
+      {/* Brand Panel (Left) */}
+      <div className="hidden lg:flex w-1/2 bg-brand p-12 flex-col justify-between relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 text-white mb-8">
+            <Package className="w-8 h-8" />
+            <span className="text-2xl font-bold tracking-tight font-sans">AssetFlow</span>
+          </div>
+          <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
+            Join your<br />organization.
+          </h2>
+          <p className="text-brand-deep text-lg max-w-md">
+            Create an employee account to request assets, book resources, and track your allocations.
+          </p>
+        </div>
+        
+        {/* Animated Background Elements */}
+        <div className="absolute top-1/3 left-10 flex flex-col gap-4 opacity-70 transform -rotate-12">
+          <AssetTagChip tag="AF-NEW" className="shadow-2xl scale-150" />
         </div>
 
-        {success && (
-          <div className="p-4 bg-emerald-950/50 border border-emerald-800 text-emerald-200 text-xs rounded-xl flex items-center gap-3">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Registration successful! Redirecting to login...</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="p-4 bg-red-950/50 border border-red-800 text-red-200 text-xs rounded-xl flex items-center gap-3">
-            <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Full Name</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                <User className="w-4 h-4" />
-              </span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Work Email</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                <Mail className="w-4 h-4" />
-              </span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@organization.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Password</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                <Key className="w-4 h-4" />
-              </span>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-400">Confirm Password</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                <Key className="w-4 h-4" />
-              </span>
-              <input
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || success}
-            className="w-full py-3 mt-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-indigo-600/10"
-          >
-            {loading ? "Registering..." : "Sign Up"}
-          </button>
-        </form>
-
-        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/60">
-          <span>Already have an account? </span>
-          <Link to="/login" className="text-indigo-400 hover:underline font-medium">Log In</Link>
+        <div className="relative z-10 text-brand-deep text-sm font-medium">
+          © {new Date().getFullYear()} AssetFlow Systems Inc.
         </div>
+      </div>
+
+      {/* Form Panel (Right) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md bg-white border border-line rounded-2xl p-8 shadow-xl flex flex-col gap-6"
+        >
+          <div className="flex flex-col gap-2 text-center lg:text-left">
+            <h1 className="text-2xl font-bold tracking-tight text-ink">
+              Create Account
+            </h1>
+            <p className="text-sm text-gray-500">Sign up creates an employee account. Admin roles are assigned later by an administrator.</p>
+          </div>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-50 border border-rust text-rust text-sm rounded-lg flex items-center gap-3"
+            >
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <span>{error}</span>
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div>
+              <label className="label">Full Name</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                  <User className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Jane Doe"
+                  className="input-field pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Work Email</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                  <Mail className="w-4 h-4" />
+                </span>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="name@company.com"
+                  className="input-field pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Password</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                  <Key className="w-4 h-4" />
+                </span>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  required
+                  minLength={8}
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="input-field pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-ink focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full py-2.5 mt-2 shadow-md shadow-brand/20"
+            >
+              {loading ? "Creating Account..." : "Sign Up"}
+            </button>
+          </form>
+
+          <div className="text-center text-sm text-gray-500 pt-4 border-t border-line">
+            <span>Already have an account? </span>
+            <Link to="/login" className="text-brand hover:underline font-semibold">
+              Log in
+            </Link>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
+import { QRCodeSVG } from 'qrcode.react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Plus, 
@@ -8,22 +10,30 @@ import {
   Trash2, 
   Archive,
   QrCode,
-  ShieldCheck,
-  ShieldAlert
+  CheckCircle,
+  AlertTriangle,
+  X,
+  MapPin,
+  Tag,
+  DollarSign,
+  Activity,
+  PackageSearch
 } from 'lucide-react';
+import { useToast } from '../components/Toast';
+import AssetTagChip from '../components/AssetTagChip';
 
 const AssetDirectory = ({ user }) => {
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
 
-  // Register Modal state
+  // Register Modal state (We'll use a styled modal for registration)
   const [showRegModal, setShowRegModal] = useState(false);
   const [assetName, setAssetName] = useState('');
   const [assetCategory, setAssetCategory] = useState('');
@@ -34,23 +44,24 @@ const AssetDirectory = ({ user }) => {
   const [assetLocation, setAssetLocation] = useState('');
   const [assetShared, setAssetShared] = useState(false);
 
-  // Detail Modal state
+  // Detail Drawer state
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [allocHistory, setAllocHistory] = useState([]);
   const [maintHistory, setMaintHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
       const [resAssets, resCats] = await Promise.all([
-        axios.get('http://localhost:8000/api/assets', { headers }),
-        axios.get('http://localhost:8000/api/categories', { headers })
+        api.get('/assets'),
+        api.get('/categories')
       ]);
       setAssets(resAssets.data);
       setCategories(resCats.data);
     } catch (err) {
-      setError("Failed to fetch inventory directory.");
+      addToast("Failed to fetch inventory directory.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,11 +71,8 @@ const AssetDirectory = ({ user }) => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:8000/api/assets', {
+      await api.post('/assets', {
         name: assetName,
         category_id: parseInt(assetCategory),
         serial_number: assetSerial || null,
@@ -73,10 +81,8 @@ const AssetDirectory = ({ user }) => {
         condition: assetCondition,
         location: assetLocation,
         shared_flag: assetShared
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
-      setSuccess("Asset successfully registered in repository!");
+      addToast("Asset successfully registered in repository!", "success");
       setShowRegModal(false);
       // Reset
       setAssetName('');
@@ -89,22 +95,23 @@ const AssetDirectory = ({ user }) => {
       setAssetShared(false);
       loadData();
     } catch (err) {
-      setError(err.response?.data?.detail || "Asset registration failed.");
+      addToast(err.response?.data?.detail || "Asset registration failed.", "error");
     }
   };
 
   const loadAssetHistory = async (assetId) => {
+    setHistoryLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
       const [resAlloc, resMaint] = await Promise.all([
-        axios.get('http://localhost:8000/api/allocations', { headers }),
-        axios.get('http://localhost:8000/api/maintenance', { headers })
+        api.get('/allocations'),
+        api.get('/maintenance')
       ]);
       setAllocHistory(resAlloc.data.filter(a => a.asset_id === assetId));
       setMaintHistory(resMaint.data.filter(m => m.asset_id === assetId));
     } catch (err) {
       console.error(err);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -113,7 +120,7 @@ const AssetDirectory = ({ user }) => {
     loadAssetHistory(asset.id);
   };
 
-  // Filtered Assets list
+  // Filter logic
   const filteredAssets = assets.filter(asset => {
     const matchesSearch = 
       asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,372 +128,409 @@ const AssetDirectory = ({ user }) => {
       (asset.serial_number && asset.serial_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
       asset.location.toLowerCase().includes(searchQuery.toLowerCase());
       
-    const matchesCategory = filterCategory ? asset.category_id === parseInt(filterCategory) : true;
-    const matchesStatus = filterStatus ? asset.status === filterStatus : true;
+    const matchesCategory = filterCategory === 'All' ? true : asset.category_id === parseInt(filterCategory);
+    const matchesStatus = filterStatus === 'All' ? true : asset.status === filterStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const allStatuses = ['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed'];
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 relative">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold tracking-tight text-white">Asset Registry Directory</h2>
-          <p className="text-xs text-slate-400">Search hardware listings, verify lifecycle statuses, and view audit history.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-ink">Asset Directory</h2>
+          <p className="text-sm text-gray-500">Search hardware listings, verify lifecycle statuses, and view audit history.</p>
         </div>
         {user?.role !== 'Employee' && (
           <button 
             onClick={() => setShowRegModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition"
+            className="btn btn-primary whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
-            <span>Register New Asset</span>
+            <Plus className="w-4 h-4 mr-2" />
+            Register New Asset
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-950/45 border border-red-800 text-red-200 text-xs rounded-xl flex items-center gap-3">
-          <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="p-4 bg-emerald-950/45 border border-emerald-800 text-emerald-200 text-xs rounded-xl flex items-center gap-3">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{success}</span>
-        </div>
-      )}
-
-      {/* FILTER BAR */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-900 border border-slate-850 p-4 rounded-xl shadow-md">
-        <div className="relative col-span-1 md:col-span-2">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-            <Search className="w-4 h-4" />
-          </span>
+      {/* FILTER CONTROLS */}
+      <div className="bg-white border border-line p-5 rounded-2xl shadow-sm flex flex-col gap-5">
+        <div className="relative">
+          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by tag, name, serial or location..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs focus:outline-none focus:border-indigo-500 transition text-slate-200"
+            className="input-field pl-10 h-12 text-base"
           />
         </div>
 
-        <div>
-          <select 
-            value={filterCategory} 
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-xs focus:outline-none focus:border-indigo-500 transition text-slate-400"
-          >
-            <option value="">All Categories</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</span>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => setFilterCategory('All')}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
+                  ${filterCategory === 'All' ? 'bg-brand text-white border-brand' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                `}
+              >
+                All
+              </button>
+              {categories.map(c => (
+                <button 
+                  key={c.id}
+                  onClick={() => setFilterCategory(c.id.toString())}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
+                    ${filterCategory === c.id.toString() ? 'bg-brand text-white border-brand' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                  `}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div>
-          <select 
-            value={filterStatus} 
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-955 border border-slate-800 rounded-xl text-xs focus:outline-none focus:border-indigo-500 transition text-slate-400"
-          >
-            <option value="">All Statuses</option>
-            <option value="Available">Available</option>
-            <option value="Allocated">Allocated</option>
-            <option value="Reserved">Reserved</option>
-            <option value="Under Maintenance">Under Maintenance</option>
-            <option value="Lost">Lost</option>
-            <option value="Retired">Retired</option>
-            <option value="Disposed">Disposed</option>
-          </select>
+          <div className="flex flex-col gap-2 border-l-0 lg:border-l border-line lg:pl-6">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => setFilterStatus('All')}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
+                  ${filterStatus === 'All' ? 'bg-ink text-white border-ink' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                `}
+              >
+                All
+              </button>
+              {allStatuses.map(status => (
+                <button 
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
+                    ${filterStatus === status ? 'bg-ink text-white border-ink' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                  `}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* ASSET GRID LIST */}
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-6 shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase font-semibold">
-                <th className="py-3 px-4">Tag</th>
-                <th className="py-3 px-4">Asset Name</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4">Condition</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredAssets.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-6 text-center text-slate-500">No assets matching criteria found.</td>
+      <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface border-b border-line">
+                <tr className="text-gray-500 font-semibold">
+                  <th className="py-3 px-4">Tag</th>
+                  <th className="py-3 px-4">Asset Name</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Location</th>
+                  <th className="py-3 px-4">Status</th>
                 </tr>
-              ) : (
-                filteredAssets.map(asset => (
-                  <tr key={asset.id} className="hover:bg-slate-850/40 transition">
-                    <td className="py-3.5 px-4 font-mono text-indigo-400 font-bold">{asset.tag}</td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-200">{asset.name}</td>
-                    <td className="py-3.5 px-4 text-slate-400">
-                      {categories.find(c => c.id === asset.category_id)?.name || "Uncategorized"}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-450">{asset.location}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="text-[10px] font-semibold text-slate-350">{asset.condition}</span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border
-                        ${asset.status === 'Available' ? 'bg-emerald-950/40 text-emerald-350 border-emerald-800' : ''}
-                        ${asset.status === 'Allocated' ? 'bg-indigo-950/40 text-indigo-350 border-indigo-800' : ''}
-                        ${asset.status === 'Reserved' ? 'bg-blue-950/40 text-blue-350 border-blue-800' : ''}
-                        ${asset.status === 'Under Maintenance' ? 'bg-yellow-950/40 text-yellow-350 border-yellow-800' : ''}
-                        ${asset.status === 'Lost' ? 'bg-red-950/40 text-red-350 border-red-800' : ''}
-                        ${asset.status === 'Retired' || asset.status === 'Disposed' ? 'bg-slate-950/40 text-slate-450 border-slate-850' : ''}
-                      `}>
-                        {asset.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button 
+              </thead>
+              <tbody className="divide-y divide-line">
+                <AnimatePresence>
+                  {filteredAssets.length === 0 ? (
+                    <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <td colSpan="5" className="py-12 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
+                          <PackageSearch className="w-10 h-10 text-gray-300" />
+                          <p>No assets matching your criteria found.</p>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ) : (
+                    filteredAssets.map(asset => (
+                      <motion.tr 
+                        key={asset.id} 
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="hover:bg-surface transition cursor-pointer group"
                         onClick={() => handleRowClick(asset)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition"
-                        title="View Asset History"
                       >
-                        <History className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <td className="py-3 px-4"><AssetTagChip tag={asset.tag} /></td>
+                        <td className="py-3 px-4 font-semibold text-ink group-hover:text-brand transition">{asset.name}</td>
+                        <td className="py-3 px-4 text-gray-600 text-xs font-medium">
+                          {categories.find(c => c.id === asset.category_id)?.name || "Uncategorized"}
+                        </td>
+                        <td className="py-3 px-4 text-gray-600 flex items-center gap-1.5 text-xs">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                          {asset.location}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold border
+                            ${asset.status === 'Available' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                            ${asset.status === 'Allocated' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                            ${asset.status === 'Reserved' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}
+                            ${asset.status === 'Under Maintenance' ? 'bg-amber/10 text-amber border-amber/20' : ''}
+                            ${asset.status === 'Lost' ? 'bg-red-50 text-rust border-red-200' : ''}
+                            ${asset.status === 'Retired' || asset.status === 'Disposed' ? 'bg-gray-100 text-gray-500 border-gray-200' : ''}
+                          `}>
+                            {asset.status}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* REGISTRATION MODAL */}
-      {showRegModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-          <form onSubmit={handleRegister} className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-4 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 className="font-bold text-base text-white">Register Asset</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5 col-span-2">
-                <label className="text-xs font-semibold text-slate-400">Asset Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={assetName} 
-                  onChange={(e) => setAssetName(e.target.value)}
-                  placeholder="e.g. Dell Latitude 5420"
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-                />
+      <AnimatePresence>
+        {showRegModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setShowRegModal(false)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleRegister} 
+              className="relative w-full max-w-2xl bg-white border border-line rounded-2xl p-6 flex flex-col gap-5 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-2 border-b border-line pb-4">
+                <h3 className="font-bold text-xl text-ink">Register New Asset</h3>
+                <button type="button" onClick={() => setShowRegModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Category</label>
-                <select 
-                  required
-                  value={assetCategory} 
-                  onChange={(e) => setAssetCategory(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-350"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Serial Number</label>
-                <input 
-                  type="text" 
-                  value={assetSerial} 
-                  onChange={(e) => setAssetSerial(e.target.value)}
-                  placeholder="e.g. SN-998811A"
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100 font-mono"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Acquisition Date</label>
-                <input 
-                  type="date" 
-                  required
-                  value={assetAcqDate} 
-                  onChange={(e) => setAssetAcqDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-350"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Acquisition Cost ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  required
-                  value={assetAcqCost} 
-                  onChange={(e) => setAssetAcqCost(e.target.value)}
-                  placeholder="e.g. 1200.00"
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Condition</label>
-                <select 
-                  value={assetCondition} 
-                  onChange={(e) => setAssetCondition(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-350"
-                >
-                  <option value="New">New</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                  <option value="Damaged">Damaged</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400">Location</label>
-                <input 
-                  type="text" 
-                  required
-                  value={assetLocation} 
-                  onChange={(e) => setAssetLocation(e.target.value)}
-                  placeholder="e.g. Conference Room A"
-                  className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition text-slate-100"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 col-span-2 mt-2">
-                <input 
-                  type="checkbox" 
-                  id="sharedFlag"
-                  checked={assetShared}
-                  onChange={(e) => setAssetShared(e.target.checked)}
-                  className="w-4.5 h-4.5 rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                />
-                <label htmlFor="sharedFlag" className="text-xs font-semibold text-slate-350 cursor-pointer">
-                  Mark as shared/bookable resource (e.g. Meeting Space, Pool Vehicle)
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button 
-                type="button" 
-                onClick={() => setShowRegModal(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-500 text-xs font-semibold rounded-lg transition"
-              >
-                Register Asset
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* DETAIL & HISTORY MODAL */}
-      {selectedAsset && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-5 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-indigo-400 font-mono tracking-wider uppercase">{selectedAsset.tag}</span>
-                <h3 className="font-bold text-lg text-white">{selectedAsset.name}</h3>
-              </div>
-              <button 
-                onClick={() => setSelectedAsset(null)}
-                className="text-slate-400 hover:text-white text-xs font-semibold"
-              >
-                Close
-              </button>
-            </div>
-
-            {/* Asset quick details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-950/60 border border-slate-850 rounded-xl text-xs">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-slate-500">Serial</span>
-                <span className="font-mono text-slate-300">{selectedAsset.serial_number || "N/A"}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-slate-500">Cost</span>
-                <span className="text-slate-300 font-semibold">${selectedAsset.acquisition_cost}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-slate-500">Condition</span>
-                <span className="text-slate-300">{selectedAsset.condition}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-slate-500">Current Status</span>
-                <span className="text-indigo-400 font-bold">{selectedAsset.status}</span>
-              </div>
-            </div>
-
-            {/* History Tabs */}
-            <div className="flex flex-col gap-4">
-              <div className="border-b border-slate-800 pb-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Custody & Maintenance History</span>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                {/* Allocation History */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold text-slate-300">Allocation Records</span>
-                  {allocHistory.length === 0 ? (
-                    <span className="text-xs text-slate-500 italic">No allocations recorded.</span>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {allocHistory.map(alloc => (
-                        <div key={alloc.id} className="flex justify-between items-center p-3 bg-slate-950/30 border border-slate-850/60 rounded-lg text-xs">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-350">Custodian ID: {alloc.employee_id}</span>
-                            <span className="text-[10px] text-slate-500">Assigned: {alloc.allocation_date}</span>
-                          </div>
-                          <span className={`text-[10px] uppercase font-bold
-                            ${alloc.state === 'returned' ? 'text-slate-400' : 'text-emerald-400'}
-                          `}>
-                            {alloc.state}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="col-span-2">
+                  <label className="label">Asset Name</label>
+                  <input 
+                    type="text" required value={assetName} onChange={(e) => setAssetName(e.target.value)}
+                    placeholder="e.g. MacBook Pro M3 16-inch" className="input-field"
+                  />
                 </div>
 
-                {/* Maintenance History */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold text-slate-300">Maintenance & Repairs</span>
-                  {maintHistory.length === 0 ? (
-                    <span className="text-xs text-slate-500 italic">No repairs logged.</span>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {maintHistory.map(maint => (
-                        <div key={maint.id} className="flex justify-between items-center p-3 bg-slate-950/30 border border-slate-850/60 rounded-lg text-xs">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-350">{maint.issue_description}</span>
-                            <span className="text-[10px] text-slate-500">Priority: {maint.priority}</span>
-                          </div>
-                          <span className="text-[10px] text-indigo-400 font-bold uppercase">{maint.status}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div>
+                  <label className="label">Category</label>
+                  <select 
+                    required value={assetCategory} onChange={(e) => setAssetCategory(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label">Serial Number</label>
+                  <input 
+                    type="text" value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)}
+                    placeholder="e.g. SN-998811A" className="input-field font-mono uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Acquisition Date</label>
+                  <input 
+                    type="date" required value={assetAcqDate} onChange={(e) => setAssetAcqDate(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Acquisition Cost ($)</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><DollarSign className="w-4 h-4"/></span>
+                    <input 
+                      type="number" step="0.01" required value={assetAcqCost} onChange={(e) => setAssetAcqCost(e.target.value)}
+                      placeholder="0.00" className="input-field pl-9"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label">Condition</label>
+                  <select 
+                    value={assetCondition} onChange={(e) => setAssetCondition(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="New">New</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                    <option value="Damaged">Damaged</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label">Location</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><MapPin className="w-4 h-4"/></span>
+                    <input 
+                      type="text" required value={assetLocation} onChange={(e) => setAssetLocation(e.target.value)}
+                      placeholder="e.g. HQ IT Storage" className="input-field pl-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 col-span-2 mt-2 p-4 bg-surface rounded-xl border border-line">
+                  <div className="pt-0.5">
+                    <input 
+                      type="checkbox" id="sharedFlag" checked={assetShared} onChange={(e) => setAssetShared(e.target.checked)}
+                      className="w-4.5 h-4.5 rounded border-gray-300 text-brand focus:ring-brand"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label htmlFor="sharedFlag" className="text-sm font-semibold text-ink cursor-pointer">
+                      Mark as shared/bookable resource
+                    </label>
+                    <span className="text-xs text-gray-500">Allow this item to be booked for short-term use (e.g. Projector, Pool Car, Meeting Space).</span>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              <div className="flex justify-end gap-3 pt-5 border-t border-line mt-2">
+                <button type="button" onClick={() => setShowRegModal(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary">Register Asset</button>
+              </div>
+            </motion.form>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* DETAIL SIDE DRAWER */}
+      <AnimatePresence>
+        {selectedAsset && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedAsset(null)}
+              className="fixed inset-0 bg-ink/30 backdrop-blur-sm z-40"
+            />
+            <motion.div 
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full md:w-[500px] bg-white shadow-2xl z-50 flex flex-col border-l border-line overflow-hidden"
+            >
+              {/* Drawer Header */}
+              <div className="px-6 py-5 border-b border-line flex justify-between items-start bg-surface/50">
+                <div className="flex flex-col gap-1.5">
+                  <AssetTagChip tag={selectedAsset.tag} />
+                  <h3 className="text-xl font-bold text-ink leading-tight">{selectedAsset.name}</h3>
+                </div>
+                <button onClick={() => setSelectedAsset(null)} className="p-2 text-gray-400 hover:text-ink hover:bg-gray-100 rounded-full transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
+                {/* QR Code and Quick Stats */}
+                <div className="flex gap-6 items-center">
+                  <div className="p-3 bg-white border border-line rounded-xl shadow-sm">
+                    <QRCodeSVG 
+                      value={JSON.stringify({ tag: selectedAsset.tag, id: selectedAsset.id })}
+                      size={80}
+                      level={"L"}
+                      includeMargin={false}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 flex-1">
+                    <div className="flex justify-between items-center border-b border-line pb-2">
+                      <span className="text-xs text-gray-500 font-semibold uppercase">Status</span>
+                      <span className="text-sm font-bold text-brand">{selectedAsset.status}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-line pb-2">
+                      <span className="text-xs text-gray-500 font-semibold uppercase">Condition</span>
+                      <span className="text-sm font-medium text-ink">{selectedAsset.condition}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-1">
+                      <span className="text-xs text-gray-500 font-semibold uppercase">Serial</span>
+                      <span className="text-sm font-mono text-ink">{selectedAsset.serial_number || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* History Section */}
+                <div className="flex flex-col gap-4">
+                  <h4 className="text-sm font-bold text-ink border-b border-line pb-2 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-brand" /> Lifecycle History
+                  </h4>
+                  
+                  {historyLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-6 relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-line z-0"></div>
+                      
+                      {allocHistory.length === 0 && maintHistory.length === 0 ? (
+                        <p className="text-sm text-gray-500 italic pl-10 z-10 bg-white py-1">No lifecycle events recorded yet.</p>
+                      ) : (
+                        <>
+                          {/* We could sort these chronologically, but for demo we just show allocs then maints */}
+                          {allocHistory.map((alloc, idx) => (
+                            <div key={`alloc-${idx}`} className="relative pl-10 flex flex-col gap-1 z-10">
+                              <div className="absolute left-[9px] top-1 w-3 h-3 rounded-full bg-brand ring-4 ring-white"></div>
+                              <span className="text-sm font-semibold text-ink">
+                                {alloc.state === 'approved' || alloc.state === 'returned' ? 'Allocated to' : 'Requested by'} User {alloc.employee_id}
+                              </span>
+                              <div className="flex justify-between items-center mt-1 p-3 bg-surface rounded-lg border border-line">
+                                <span className="text-xs text-gray-500">Date: {alloc.allocation_date || 'Pending'}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-brand">{alloc.state}</span>
+                              </div>
+                            </div>
+                          ))}
+
+                          {maintHistory.map((maint, idx) => (
+                            <div key={`maint-${idx}`} className="relative pl-10 flex flex-col gap-1 z-10">
+                              <div className="absolute left-[9px] top-1 w-3 h-3 rounded-full bg-amber ring-4 ring-white"></div>
+                              <span className="text-sm font-semibold text-ink">Maintenance Logged</span>
+                              <div className="flex flex-col gap-2 mt-1 p-3 bg-orange-50/50 rounded-lg border border-amber/20">
+                                <span className="text-sm text-ink">{maint.issue_description}</span>
+                                <div className="flex justify-between items-center pt-2 border-t border-amber/10">
+                                  <span className="text-[10px] uppercase font-bold text-amber">Priority: {maint.priority}</span>
+                                  <span className="text-[10px] uppercase font-bold text-gray-500">{maint.status}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Drawer Footer Actions */}
+              {user?.role !== 'Employee' && (
+                <div className="p-4 border-t border-line bg-surface/50 flex gap-3">
+                  <button className="flex-1 btn btn-secondary text-brand hover:bg-brand/5 border-brand/20">
+                    Edit Asset
+                  </button>
+                  <button className="btn btn-secondary text-rust hover:bg-red-50 border-red-200">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

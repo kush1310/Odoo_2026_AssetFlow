@@ -1,22 +1,94 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #101826;
+  --color-surface: #F6F7F9;
+  --color-panel: #FFFFFF;
+  --color-brand: #0F6E5F;
+  --color-brand-deep: #0B4F44;
+  --color-amber: #C97A2B;
+  --color-rust: #B3261E;
+  --color-line: #DFE3E9;
+  --color-mono-bg: #0F1B2E;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
 @layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --ink: #101826;
+    --surface: #F6F7F9;
+    --panel: #FFFFFF;
+    --brand: #0F6E5F;
+    --brand-deep: #0B4F44;
+    --amber: #C97A2B;
+    --rust: #B3261E;
+    --line: #DFE3E9;
+    --mono-bg: #0F1B2E;
+  }
+
   body {
-    @apply bg-slate-900 text-slate-100 antialiased font-sans;
+    @apply bg-surface text-ink antialiased font-sans;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-deep;
+  }
+  .btn-secondary {
+    @apply bg-white text-ink border border-line hover:bg-surface;
+  }
+  .btn-danger {
+    @apply bg-rust text-white hover:bg-red-800;
+  }
+
+  /* Asset Tag Chip Base */
+  .asset-tag {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono bg-mono-bg text-white shadow-sm border border-transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Input fields */
+  .input-field {
+    @apply flex h-10 w-full rounded-md border border-line bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Form labels */
+  .label {
+    @apply block text-sm font-medium text-ink mb-1.5;
   }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background-color: #0f172a;
+  @apply bg-surface;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full;
+  @apply bg-gray-300 rounded-full border-2 border-surface;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  @apply bg-gray-400;
+}
+
+/* Reduced motion overrides */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
