@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { motion } from 'framer-motion';
 import { 
@@ -13,7 +13,8 @@ import {
   CalendarPlus, 
   AlertTriangle,
   Activity,
-  ChevronRight
+  ChevronRight,
+  CheckCircle
 } from 'lucide-react';
 import AssetTagChip from '../components/AssetTagChip';
 
@@ -40,6 +41,7 @@ const AnimatedNumber = ({ value }) => {
 };
 
 const Dashboard = ({ user }) => {
+  const navigate = useNavigate();
   const [kpiData, setKpiData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -120,7 +122,7 @@ const Dashboard = ({ user }) => {
           <span className="text-3xl font-bold text-ink"><AnimatedNumber value={kpiData.available} /></span>
         </motion.div>
 
-        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => window.location.href='/allocations'}>
+        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => navigate('/allocations')}>
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Allocated</span>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition">
@@ -130,7 +132,7 @@ const Dashboard = ({ user }) => {
           <span className="text-3xl font-bold text-ink"><AnimatedNumber value={kpiData.allocated} /></span>
         </motion.div>
 
-        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => window.location.href='/maintenance'}>
+        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => navigate('/maintenance')}>
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Under Repair</span>
             <div className="p-2 bg-amber/10 text-amber rounded-lg group-hover:bg-amber group-hover:text-white transition">
@@ -140,7 +142,7 @@ const Dashboard = ({ user }) => {
           <span className="text-3xl font-bold text-ink"><AnimatedNumber value={kpiData.under_maintenance} /></span>
         </motion.div>
 
-        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => window.location.href='/bookings'}>
+        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => navigate('/bookings')}>
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Bookings</span>
             <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition">
@@ -150,7 +152,7 @@ const Dashboard = ({ user }) => {
           <span className="text-3xl font-bold text-ink"><AnimatedNumber value={kpiData.active_bookings} /></span>
         </motion.div>
 
-        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl col-span-2 lg:col-span-1 flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => window.location.href='/allocations'}>
+        <motion.div variants={item} className="bg-white border border-line p-5 rounded-2xl col-span-2 lg:col-span-1 flex flex-col gap-3 shadow-sm hover:shadow-md transition group cursor-pointer" onClick={() => navigate('/allocations')}>
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pending Transfers</span>
             <div className="p-2 bg-pink-50 text-pink-600 rounded-lg group-hover:bg-pink-600 group-hover:text-white transition">
@@ -251,8 +253,5 @@ const Dashboard = ({ user }) => {
     </motion.div>
   );
 };
-
-// CheckCircle icon missing from imports
-import { CheckCircle } from 'lucide-react';
 
 export default Dashboard;

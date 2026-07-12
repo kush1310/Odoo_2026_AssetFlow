@@ -8,9 +8,7 @@ import {
   Trash2,
   CalendarCheck,
   X,
-  AlertCircle,
-  AlertTriangle,
-  ChevronRight
+  AlertCircle
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -29,9 +27,9 @@ const Bookings = ({ user }) => {
   const [bookEnd, setBookEnd] = useState('');
   const [bookPurpose, setBookPurpose] = useState('');
   
-  // Confirm Dialog State
+  // Cancel confirmation dialog state
   const [confirmCancel, setConfirmCancel] = useState(null);
-  
+
   // Shake animation trigger
   const [shake, setShake] = useState(false);
   const [conflictMsg, setConflictMsg] = useState('');

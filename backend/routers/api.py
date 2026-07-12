@@ -189,6 +189,13 @@ def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_
     return {"message": "Password updated successfully."}
 
 
+@router.get("/auth/departments")
+def get_public_departments(db: Session = Depends(get_db)):
+    """Public endpoint to fetch active departments for the signup form."""
+    depts = db.query(models.Department).filter(models.Department.status == "Active").all()
+    return [{"id": d.id, "name": d.name, "code": d.code} for d in depts]
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. ORGANIZATION SETUP (Admin only)
 # ══════════════════════════════════════════════════════════════════════════════

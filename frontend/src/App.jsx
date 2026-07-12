@@ -4,6 +4,8 @@ import { ToastProvider } from './components/Toast';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import OrgSetup from './pages/OrgSetup';
 import AssetDirectory from './pages/AssetDirectory';
@@ -53,6 +55,8 @@ function App() {
           {/* Unprotected Auth Routes */}
           <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login setUser={setUser} />} />
           <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
+          <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
+          <Route path="/reset-password" element={user ? <Navigate to="/" replace /> : <ResetPassword />} />
           
           {/* Protected Dashboard/App Routes */}
           <Route 

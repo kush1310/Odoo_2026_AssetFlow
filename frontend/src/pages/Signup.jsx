@@ -19,17 +19,13 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Fetch departments for the dropdown
-    // Note: This endpoint is public for the signup form in this architecture, 
-    // or we use a basic list. Let's try fetching, if it fails (auth), we fallback.
     const fetchDepts = async () => {
       try {
-        // We'd typically need a public endpoint or a token, but for hackathon, 
-        // we might mock this if the backend blocks unauthenticated requests to /departments.
-        // Wait, the backend requires auth for /departments! 
-        // For simplicity in this demo, we'll just allow manual entry or mock it if needed.
-        // Actually, let's just make it an optional number input or omit it since it's Optional in schema.
-      } catch (err) {}
+        const res = await api.get('/auth/departments');
+        setDepartments(res.data);
+      } catch (err) {
+        console.error("Failed to load departments:", err);
+      }
     };
     fetchDepts();
   }, []);
@@ -128,6 +124,21 @@ const Signup = () => {
                   className="input-field pl-10"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="label">Department</label>
+              <select
+                name="department_id"
+                value={formData.department_id}
+                onChange={handleChange}
+                className="input-field"
+              >
+                <option value="">Select your department...</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                ))}
+              </select>
             </div>
 
             <div>

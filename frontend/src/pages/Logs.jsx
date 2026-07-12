@@ -7,8 +7,7 @@ import {
   Lock,
   UserCircle,
   Bell,
-  CheckCircle2,
-  Trash2
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 

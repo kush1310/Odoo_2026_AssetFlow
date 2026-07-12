@@ -8,9 +8,7 @@ import {
   Play, 
   CheckCircle2, 
   X,
-  AlertTriangle,
-  Clock,
-  MoreHorizontal
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { 
@@ -89,7 +87,10 @@ const SortableTaskCard = ({ req, assetObj, techObj, user, onActionClick }) => {
         <span className="text-[10px] text-gray-400 font-semibold uppercase">{req.status}</span>
         
         {req.status === 'Pending' && user?.role !== 'Employee' && (
-          <button onClick={() => onActionClick('approve', req)} className="text-[10px] font-bold text-brand hover:text-brand-deep">Approve</button>
+          <div className="flex gap-3">
+            <button onClick={() => onActionClick('approve', req)} className="text-[10px] font-bold text-brand hover:text-brand-deep">Approve</button>
+            <button onClick={() => onActionClick('reject', req)} className="text-[10px] font-bold text-rust hover:text-red-700">Reject</button>
+          </div>
         )}
         {req.status === 'Approved' && user?.role !== 'Employee' && (
           <button onClick={() => onActionClick('assign', req)} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Assign</button>
@@ -124,6 +125,9 @@ const Maintenance = ({ user }) => {
 
   const [resolvingReq, setResolvingReq] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
+
+  const [rejectingReq, setRejectingReq] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const loadData = async () => {
     try {
@@ -216,8 +220,24 @@ const Maintenance = ({ user }) => {
     }
   };
 
+  const handleReject = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/maintenance/${rejectingReq.id}/reject`, {
+        rejection_reason: rejectionReason
+      });
+      addToast("Request rejected successfully.", "success");
+      setRejectingReq(null);
+      setRejectionReason('');
+      loadData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Rejection failed.", "error");
+    }
+  };
+
   const handleActionClick = (action, req) => {
     if (action === 'approve') approveRequest(req.id);
+    if (action === 'reject') setRejectingReq(req);
     if (action === 'assign') setAssigningReq(req);
     if (action === 'start') startWork(req.id);
     if (action === 'resolve') setResolvingReq(req);
@@ -479,6 +499,44 @@ const Maintenance = ({ user }) => {
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
                 <button type="button" onClick={() => setResolvingReq(null)} className="btn btn-secondary">Cancel</button>
                 <button type="submit" className="btn btn-primary bg-green-600 hover:bg-green-700 text-white border-transparent">Resolve Ticket</button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* REJECT MODAL */}
+      <AnimatePresence>
+        {rejectingReq && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setRejectingReq(null)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleReject} 
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg text-ink">Reject Maintenance Request</h3>
+                <button type="button" onClick={() => setRejectingReq(null)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+              </div>
+              <p className="text-sm text-gray-500 mb-2">Please explain why this request is rejected.</p>
+
+              <div>
+                <label className="label">Rejection Reason</label>
+                <textarea 
+                  required value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter rejection reason..." rows="4"
+                  className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
+                <button type="button" onClick={() => setRejectingReq(null)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-danger">Reject Request</button>
               </div>
             </motion.form>
           </div>
