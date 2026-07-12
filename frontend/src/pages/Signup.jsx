@@ -6,9 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GravityStars from '../components/ui/GravityStars';
 import RippleButton from '../components/ui/RippleButton';
 import AnimatedSelect from '../components/ui/AnimatedSelect';
+import { useToast } from '../components/Toast';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,6 +42,7 @@ const Signup = () => {
     e.preventDefault();
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters.');
+      addToast('Password must be at least 8 characters.', 'error');
       return;
     }
     setError('');
@@ -51,9 +54,12 @@ const Signup = () => {
         password:      formData.password,
         department_id: formData.department_id ? parseInt(formData.department_id) : null,
       });
+      addToast("Account successfully registered! Proceeding to Log In.", "success");
       navigate('/login', { state: { message: 'Account created successfully. Please log in.' } });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check your details.');
+      const errMsg = err.response?.data?.detail || 'Registration failed. Please check your details.';
+      setError(errMsg);
+      addToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }

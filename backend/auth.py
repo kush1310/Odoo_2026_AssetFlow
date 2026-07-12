@@ -86,6 +86,7 @@ def get_current_user(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("email")
+        token_version: Optional[int] = payload.get("token_version")
         if email is None or payload.get("type") != "access":
             raise credentials_exception
     except jwt.PyJWTError:
@@ -93,6 +94,8 @@ def get_current_user(
 
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None:
+        raise credentials_exception
+    if token_version is not None and user.token_version != token_version:
         raise credentials_exception
     if user.status != "Active":
         raise HTTPException(

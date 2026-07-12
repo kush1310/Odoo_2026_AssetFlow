@@ -5,9 +5,11 @@ import { ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GravityStars from '../components/ui/GravityStars';
 import RippleButton from '../components/ui/RippleButton';
+import { useToast } from '../components/Toast';
 
 const Login = ({ setUser }) => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,9 +32,12 @@ const Login = ({ setUser }) => {
         id:    res.data.id,
       }));
       setUser({ email: res.data.email, name: res.data.name, role: res.data.role, id: res.data.id });
+      addToast("Successfully logged in!", "success");
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Authentication failed. Please verify credentials.');
+      const errMsg = err.response?.data?.detail || 'Authentication failed. Please verify credentials.';
+      setError(errMsg);
+      addToast(errMsg, "error");
     } finally {
       setLoading(false);
     }

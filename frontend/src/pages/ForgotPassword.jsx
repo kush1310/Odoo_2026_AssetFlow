@@ -5,8 +5,10 @@ import { Key, ShieldAlert, CheckCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GravityStars from '../components/ui/GravityStars';
 import RippleButton from '../components/ui/RippleButton';
+import { useToast } from '../components/Toast';
 
 const ForgotPassword = () => {
+  const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,12 +23,16 @@ const ForgotPassword = () => {
     setLoading(true);
     try {
       const res = await api.post('/auth/forgot-password', { email });
-      setSuccess(res.data.message || "Reset token has been generated.");
+      const successMsg = res.data.message || "Reset token has been generated.";
+      setSuccess(successMsg);
+      addToast(successMsg, "success");
       if (res.data.reset_token) {
         setDemoToken(res.data.reset_token);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || "Email recovery failed. Please verify the email is registered.");
+      const errMsg = err.response?.data?.detail || "Email recovery failed. Please verify the email is registered.";
+      setError(errMsg);
+      addToast(errMsg, "error");
     } finally {
       setLoading(false);
     }

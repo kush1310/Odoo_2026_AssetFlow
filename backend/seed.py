@@ -6,10 +6,8 @@ import models
 def seed_database():
     db = SessionLocal()
     try:
-        # Check if already seeded
-        admin_email = "admin@assetflow.com"
-        admin = db.query(models.User).filter(models.User.email == admin_email).first()
-        if admin:
+        # Check if departments are already seeded
+        if db.query(models.Department).first():
             return
 
         # 1. Departments

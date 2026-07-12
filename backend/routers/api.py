@@ -134,13 +134,36 @@ def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.post("/auth/login")
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == credentials.email).first()
-    if not user or not auth.verify_password(credentials.password, user.password_hash):
+    
+    if not user:
         raise HTTPException(401, "Incorrect email address or password.",
                             headers={"WWW-Authenticate": "Bearer"})
+
+    # Check account lockout status
+    if user.locked_until and user.locked_until > datetime.utcnow():
+        diff_mins = int((user.locked_until - datetime.utcnow()).total_seconds() / 60) + 1
+        raise HTTPException(403, f"Account is temporarily locked due to multiple failed attempts. Try again in {diff_mins} minutes.")
+
+    # Verify credentials
+    if not auth.verify_password(credentials.password, user.password_hash):
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= 5:
+            user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+            db.commit()
+            raise HTTPException(403, "Account has been locked for 15 minutes due to 5 consecutive failed attempts.")
+        db.commit()
+        raise HTTPException(401, "Incorrect email address or password.",
+                            headers={"WWW-Authenticate": "Bearer"})
+
     if user.status != "Active":
         raise HTTPException(403, "Your account has been deactivated. Please contact administration.")
 
-    token_data = {"email": user.email, "role": user.role, "user_id": user.id}
+    # Reset failed login stats on success
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
+
+    token_data = {"email": user.email, "role": user.role, "user_id": user.id, "token_version": user.token_version}
     access_token = auth.create_access_token(token_data)
     refresh_token = auth.create_refresh_token(token_data)
 
@@ -183,9 +206,14 @@ def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         raise HTTPException(404, "User not found.")
+    
+    # Invalidate all current active sessions globally (Token Version Increment)
+    user.token_version += 1
     user.password_hash = auth.get_password_hash(req.new_password)
+    user.failed_login_attempts = 0
+    user.locked_until = None
     db.commit()
-    log_activity(db, user.id, "RESET_PASSWORD", "users", user.id, "Password reset via token")
+    log_activity(db, user.id, "RESET_PASSWORD", "users", user.id, "Password reset via token; sessions revoked")
     return {"message": "Password updated successfully."}
 
 

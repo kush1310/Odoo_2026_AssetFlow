@@ -13,6 +13,9 @@ class User(Base):
     role = Column(String, default="Employee", nullable=False) # Admin, Asset Manager, Department Head, Employee
     department_id = Column(Integer, ForeignKey('departments.id', ondelete='SET NULL'), nullable=True)
     status = Column(String, default="Active", nullable=False) # Active, Inactive
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+    token_version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     department = relationship("Department", foreign_keys=[department_id], back_populates="employees")
