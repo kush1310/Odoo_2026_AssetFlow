@@ -8,10 +8,10 @@
 
 @theme {
   /* === Brand Colors === */
-  --color-brand:       #0F766E;
-  --color-brand-deep:  #0D5D57;
-  --color-accent:      #14B8A6;
-  --color-accent-soft: #CCFBF1;
+  --color-brand:       var(--brand);
+  --color-brand-deep:  var(--brand-deep);
+  --color-accent:      var(--accent);
+  --color-accent-soft: var(--accent-soft);
 
   /* === Semantic Colors === */
   --color-success:     #22C55E;
@@ -19,17 +19,17 @@
   --color-danger:      #EF4444;
   --color-info:        #3B82F6;
 
-  /* === Neutral Palette (Light) === */
-  --color-ink:         #0F172A;
-  --color-ink-muted:   #475569;
-  --color-ink-subtle:  #94A3B8;
-  --color-surface:     #F8FAFC;
-  --color-panel:       #FFFFFF;
-  --color-border:      #E2E8F0;
-  --color-border-soft: #F1F5F9;
+  /* === Neutral Palette === */
+  --color-ink:         var(--ink);
+  --color-ink-muted:   var(--ink-muted);
+  --color-ink-subtle:  var(--ink-subtle);
+  --color-surface:     var(--surface);
+  --color-panel:       var(--panel);
+  --color-border:      var(--border-color);
+  --color-border-soft: var(--border-soft);
 
   /* === Legacy aliases for backward compat === */
-  --color-line:        #E2E8F0;
+  --color-line:        var(--line);
   --color-amber:       #F59E0B;
   --color-rust:        #EF4444;
   --color-mono-bg:     #0F172A;
@@ -57,6 +57,20 @@
    ============================================================ */
 
 :root {
+  /* Dynamic tokens mapped to Tailwind v4 @theme */
+  --brand:       #0F766E;
+  --brand-deep:  #0D5D57;
+  --accent:      #14B8A6;
+  --accent-soft: #CCFBF1;
+  --ink:         #0F172A;
+  --ink-muted:   #475569;
+  --ink-subtle:  #94A3B8;
+  --surface:     #F8FAFC;
+  --panel:       #FFFFFF;
+  --border-color: #E2E8F0;
+  --border-soft: #F1F5F9;
+  --line:        #E2E8F0;
+
   /* semantic vars used throughout components */
   --bg-body:        #F8FAFC;
   --bg-panel:       #FFFFFF;
@@ -73,7 +87,6 @@
   --text-brand:     #0F766E;
   --text-on-brand:  #FFFFFF;
 
-  --border-color:   #E2E8F0;
   --border-focus:   #0F766E;
 
   --shadow-sm:   0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
@@ -87,6 +100,20 @@
    ============================================================ */
 
 [data-theme="dark"] {
+  /* Dynamic tokens mapped to Tailwind v4 @theme */
+  --brand:       #2DD4BF;
+  --brand-deep:  #0D5D57;
+  --accent:      #14B8A6;
+  --accent-soft: #115E59;
+  --ink:         #F1F5F9;
+  --ink-muted:   #94A3B8;
+  --ink-subtle:  #64748B;
+  --surface:     #0B1120;
+  --panel:       #111827;
+  --border-color: #1E293B;
+  --border-soft: #1E293B;
+  --line:        #1E293B;
+
   --bg-body:        #0B1120;
   --bg-panel:       #111827;
   --bg-sidebar:     #0F1729;
@@ -102,7 +129,6 @@
   --text-brand:     #2DD4BF;
   --text-on-brand:  #FFFFFF;
 
-  --border-color:   #1E293B;
   --border-focus:   #2DD4BF;
 
   --shadow-sm:   0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
@@ -711,3 +737,56 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   DARK MODE OVERRIDES (For Legacy/Utility Classes)
+   ============================================================ */
+[data-theme="dark"] {
+  /* Dynamic utilities */
+  .bg-white {
+    background-color: var(--panel) !important;
+  }
+  .bg-gray-50, .bg-surface\/50 {
+    background-color: var(--bg-muted) !important;
+  }
+  
+  .border-line, .border-gray-200, .border-gray-300 {
+    border-color: var(--border-color) !important;
+  }
+  .divide-line, .divide-gray-200 {
+    & > * + * {
+      border-color: var(--border-color) !important;
+    }
+  }
+
+  .text-ink, .text-gray-900, .text-gray-800 {
+    color: var(--text-primary) !important;
+  }
+  .text-gray-700, .text-gray-600, .text-gray-500 {
+    color: var(--text-secondary) !important;
+  }
+  .text-gray-400 {
+    color: var(--text-muted) !important;
+  }
+
+  /* Form & Input Overrides */
+  .input-field, input, select, textarea {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  ::placeholder {
+    color: var(--text-muted) !important;
+  }
+
+  /* Buttons Outlines and Secondaries */
+  .btn-secondary {
+    background-color: var(--bg-panel) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  .btn-secondary:hover {
+    background-color: var(--bg-hover) !important;
+  }
+}
+
