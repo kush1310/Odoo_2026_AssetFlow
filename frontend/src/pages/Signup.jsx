@@ -196,8 +196,10 @@ const Signup = () => {
           {/* Submit */}
           <RippleButton
             type="submit"
+            variant="purple"
+            size="lg"
             disabled={loading}
-            className="w-full py-2.5 bg-[#7F56D9] text-white hover:bg-[#693FD0] rounded-lg shadow-sm font-semibold transition-colors mt-2"
+            className="w-full mt-1"
           >
             {loading ? 'Creating account...' : 'Get started'}
           </RippleButton>

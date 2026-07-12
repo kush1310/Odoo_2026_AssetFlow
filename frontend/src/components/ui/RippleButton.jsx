@@ -36,6 +36,7 @@ const RippleButton = ({
     danger:    'bg-rust text-white hover:bg-red-800 shadow-sm shadow-rust/20 focus-visible:ring-rust',
     ghost:     'bg-transparent text-gray-600 hover:bg-surface hover:text-ink focus-visible:ring-brand',
     outline:   'bg-transparent text-brand border border-brand hover:bg-brand/5 focus-visible:ring-brand',
+    purple:    'bg-[#7F56D9] text-white hover:bg-[#693FD0] shadow-sm shadow-[#7F56D9]/20 focus-visible:ring-[#7F56D9]',
   };
 
   const sizeClasses = {
@@ -51,6 +52,7 @@ const RippleButton = ({
     danger:    'rgba(255,255,255,0.30)',
     ghost:     'rgba(15,110,95,0.12)',
     outline:   'rgba(15,110,95,0.15)',
+    purple:    'rgba(255,255,255,0.35)',
   };
 
   const handleClick = (e) => {
@@ -78,7 +80,7 @@ const RippleButton = ({
       whileTap={disabled ? {} : { scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       className={`
-        relative overflow-hidden inline-flex items-center font-medium
+        relative overflow-hidden inline-flex items-center justify-center font-medium
         transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
         disabled:opacity-50 disabled:cursor-not-allowed select-none
         ${variantClasses[variant] || variantClasses.primary}
