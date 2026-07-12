@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Asset Allocation Views -->
+    <record id="view_assetflow_allocation_tree" model="ir.ui.view">
+        <field name="name">assetflow.allocation.tree</field>
+        <field name="model">assetflow.allocation</field>
+        <field name="arch" type="xml">
+            <tree string="Asset Allocations" decoration-info="state == 'requested'" decoration-success="state == 'approved'" decoration-danger="state == 'overdue'" decoration-muted="state == 'returned'">
+                <field name="asset_id"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="expected_return_date"/>
+                <field name="actual_return_date"/>
+                <field name="state" widget="badge" decoration-info="state == 'requested'" decoration-success="state == 'approved'" decoration-danger="state == 'overdue'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_assetflow_allocation_form" model="ir.ui.view">
+        <field name="name">assetflow.allocation.form</field>
+        <field name="model">assetflow.allocation</field>
+        <field name="arch" type="xml">
+            <form string="Asset Allocation">
+                <header>
+                    <button name="action_request" string="Request Allocation" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Approve Allocation" type="object" class="oe_highlight" groups="asset_flow.group_assetflow_manager" invisible="state != 'requested'"/>
+                    <button name="action_return" string="Return Asset" type="object" class="oe_highlight" invisible="state not in ['approved', 'overdue']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,requested,approved,returned"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="asset_id" options="{'no_create': True}" readonly="state != 'draft'"/>
+                            <field name="employee_id" options="{'no_create': True}" readonly="state != 'draft'"/>
+                            <field name="department_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="expected_return_date" readonly="state not in ['draft', 'requested']"/>
+                            <field name="actual_return_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Condition details or checklist on release/return..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_assetflow_allocation_search" model="ir.ui.view">
+        <field name="name">assetflow.allocation.search</field>
+        <field name="model">assetflow.allocation</field>
+        <field name="arch" type="xml">
+            <search string="Search Allocations">
+                <field name="asset_id"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <filter string="Requested" name="requested" domain="[('state', '=', 'requested')]"/>
+                <filter string="Active" name="active" domain="[('state', '=', 'approved')]"/>
+                <filter string="Overdue" name="overdue" domain="[('state', '=', 'overdue')]"/>
+                <filter string="Returned" name="returned" domain="[('state', '=', 'returned')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Asset" name="group_by_asset" context="{'group_by': 'asset_id'}"/>
+                    <filter string="Custodian" name="group_by_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Status" name="group_by_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Asset Transfer Views -->
+    <record id="view_assetflow_transfer_tree" model="ir.ui.view">
+        <field name="name">assetflow.transfer.tree</field>
+        <field name="model">assetflow.transfer</field>
+        <field name="arch" type="xml">
+            <tree string="Asset Transfers" decoration-info="state == 'requested'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'">
+                <field name="asset_id"/>
+                <field name="source_holder_id"/>
+                <field name="target_holder_id"/>
+                <field name="manager_id"/>
+                <field name="state" widget="badge" decoration-info="state == 'requested'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_assetflow_transfer_form" model="ir.ui.view">
+        <field name="name">assetflow.transfer.form</field>
+        <field name="model">assetflow.transfer</field>
+        <field name="arch" type="xml">
+            <form string="Asset Transfer Request">
+                <header>
+                    <button name="action_approve" string="Approve Transfer" type="object" class="oe_highlight" groups="asset_flow.group_assetflow_manager,asset_flow.group_assetflow_dept_head" invisible="state != 'requested'"/>
+                    <button name="action_reject" string="Reject Transfer" type="object" class="btn-danger" groups="asset_flow.group_assetflow_manager,asset_flow.group_assetflow_dept_head" invisible="state != 'requested'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="requested,approved,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="asset_id" options="{'no_create': True}" readonly="state != 'requested'"/>
+                            <field name="source_holder_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="target_holder_id" options="{'no_create': True}" readonly="state != 'requested'"/>
+                            <field name="manager_id" options="{'no_create': True}" readonly="state != 'requested'"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_assetflow_allocation_all" model="ir.actions.act_window">
+        <field name="name">Asset Allocations</field>
+        <field name="res_model">assetflow.allocation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_assetflow_allocation_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Request an asset allocation.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_assetflow_transfer_all" model="ir.actions.act_window">
+        <field name="name">Asset Transfers</field>
+        <field name="res_model">assetflow.transfer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create an asset transfer request.
+            </p>
+            <p>
+                Transfer an asset directly from its current custodian to another employee without manual double-check return logs.
+            </p>
+        </field>
+    </record>
+</odoo>

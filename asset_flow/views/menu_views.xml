@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Root Menu -->
+    <menuitem id="menu_assetflow_root" name="AssetFlow" sequence="10"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_assetflow_dashboard" name="Dashboard" parent="menu_assetflow_root" action="action_assetflow_asset_all" sequence="10"/>
+
+    <!-- Assets Parent & Submenus -->
+    <menuitem id="menu_assetflow_assets_parent" name="Assets" parent="menu_assetflow_root" sequence="20"/>
+    <menuitem id="menu_assetflow_asset_all" name="Asset Registry" parent="menu_assetflow_assets_parent" action="action_assetflow_asset_all" sequence="10"/>
+    <menuitem id="menu_assetflow_category" name="Categories" parent="menu_assetflow_assets_parent" action="action_assetflow_category_all" sequence="20"/>
+
+    <!-- Operations Parent & Submenus -->
+    <menuitem id="menu_assetflow_ops_parent" name="Operations" parent="menu_assetflow_root" sequence="30"/>
+    <menuitem id="menu_assetflow_allocation" name="Allocations" parent="menu_assetflow_ops_parent" action="action_assetflow_allocation_all" sequence="10"/>
+    <menuitem id="menu_assetflow_transfer" name="Transfers" parent="menu_assetflow_ops_parent" action="action_assetflow_transfer_all" sequence="20"/>
+    <menuitem id="menu_assetflow_booking" name="Resource Bookings" parent="menu_assetflow_ops_parent" action="action_assetflow_booking_all" sequence="30"/>
+
+    <!-- Maintenance Board -->
+    <menuitem id="menu_assetflow_maintenance" name="Maintenance Board" parent="menu_assetflow_root" action="action_assetflow_maintenance_all" sequence="40"/>
+
+    <!-- Audits -->
+    <menuitem id="menu_assetflow_audit" name="Audit Cycles" parent="menu_assetflow_root" action="action_assetflow_audit_cycle_all" sequence="50"/>
+</odoo>

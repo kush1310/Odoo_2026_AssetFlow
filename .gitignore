@@ -1,0 +1,18 @@
+# Virtual Environment
+venv/
+.venv/
+Env/
+env/
+
+# Python Cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Odoo data and temporary directories
+odoo.log
+*.log
+*.pid
+data/
+odoo/
