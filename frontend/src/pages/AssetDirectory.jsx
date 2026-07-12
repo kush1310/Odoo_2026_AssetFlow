@@ -138,15 +138,16 @@ const AssetDirectory = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 relative">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Asset Directory</h2>
-          <p className="text-sm text-gray-500">Search hardware listings, verify lifecycle statuses, and view audit history.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Asset Directory</h2>
+          <p className="text-sm text-slate-400 font-medium">Search hardware listings, verify lifecycle statuses, and view audit history.</p>
         </div>
         {user?.role !== 'Employee' && (
           <button 
             onClick={() => setShowRegModal(true)}
-            className="btn btn-primary whitespace-nowrap"
+            className="btn btn-primary whitespace-nowrap relative z-10"
           >
             <Plus className="w-4 h-4 mr-2" />
             Register New Asset
@@ -155,26 +156,26 @@ const AssetDirectory = ({ user }) => {
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="bg-white border border-line p-5 rounded-2xl shadow-sm flex flex-col gap-5">
+      <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex flex-col gap-5">
         <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-450" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by tag, name, serial or location..."
-            className="input-field pl-10 h-12 text-base"
+            className="input-field pl-11 h-12 text-base"
           />
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</span>
+          <div className="flex flex-col gap-2.5">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Category</span>
             <div className="flex flex-wrap gap-2">
               <button 
                 onClick={() => setFilterCategory('All')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
-                  ${filterCategory === 'All' ? 'bg-brand text-white border-brand' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border
+                  ${filterCategory === 'All' ? 'bg-brand text-white border-brand shadow-sm' : 'bg-slate-50 text-slate-650 border-slate-100 hover:bg-slate-100'}
                 `}
               >
                 All
@@ -183,8 +184,8 @@ const AssetDirectory = ({ user }) => {
                 <button 
                   key={c.id}
                   onClick={() => setFilterCategory(c.id.toString())}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
-                    ${filterCategory === c.id.toString() ? 'bg-brand text-white border-brand' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border
+                    ${filterCategory === c.id.toString() ? 'bg-brand text-white border-brand shadow-sm' : 'bg-slate-50 text-slate-650 border-slate-100 hover:bg-slate-100'}
                   `}
                 >
                   {c.name}
@@ -193,13 +194,13 @@ const AssetDirectory = ({ user }) => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 border-l-0 lg:border-l border-line lg:pl-6">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+          <div className="flex flex-col gap-2.5 border-l-0 lg:border-l border-slate-100 lg:pl-6">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status</span>
             <div className="flex flex-wrap gap-2">
               <button 
                 onClick={() => setFilterStatus('All')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
-                  ${filterStatus === 'All' ? 'bg-ink text-white border-ink' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border
+                  ${filterStatus === 'All' ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-slate-50 text-slate-650 border-slate-100 hover:bg-slate-100'}
                 `}
               >
                 All
@@ -208,8 +209,8 @@ const AssetDirectory = ({ user }) => {
                 <button 
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
-                    ${filterStatus === status ? 'bg-ink text-white border-ink' : 'bg-surface text-gray-600 border-line hover:bg-gray-100'}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border
+                    ${filterStatus === status ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-slate-50 text-slate-650 border-slate-100 hover:bg-slate-100'}
                   `}
                 >
                   {status}
@@ -221,7 +222,7 @@ const AssetDirectory = ({ user }) => {
       </div>
 
       {/* ASSET GRID LIST */}
-      <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
@@ -229,16 +230,16 @@ const AssetDirectory = ({ user }) => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-surface border-b border-line">
-                <tr className="text-gray-500 font-semibold">
-                  <th className="py-3 px-4">Tag</th>
-                  <th className="py-3 px-4">Asset Name</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Status</th>
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3.5 px-4">Tag</th>
+                  <th className="py-3.5 px-4">Asset Name</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">Location</th>
+                  <th className="py-3.5 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 <AnimatePresence>
                   {filteredAssets.length === 0 ? (
                     <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

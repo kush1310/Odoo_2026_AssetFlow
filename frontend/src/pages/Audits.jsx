@@ -154,16 +154,17 @@ const Audits = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Physical Auditing</h2>
-          <p className="text-sm text-gray-500">Initiate inventory reconciliations, assign auditors, and handle discrepancy reporting.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 shrink-0 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Physical Auditing</h2>
+          <p className="text-sm text-slate-400 font-medium">Initiate inventory reconciliations, assign auditors, and handle discrepancy reporting.</p>
         </div>
         
         {user?.role === 'Admin' && !selectedCycle && (
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary whitespace-nowrap"
+            className="btn btn-primary whitespace-nowrap relative z-10"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Audit Cycle
@@ -172,7 +173,7 @@ const Audits = ({ user }) => {
         {selectedCycle && (
           <button 
             onClick={() => setSelectedCycle(null)}
-            className="btn btn-secondary whitespace-nowrap"
+            className="btn btn-secondary whitespace-nowrap relative z-10"
           >
             <X className="w-4 h-4 mr-2" />
             Exit Verification
@@ -185,9 +186,9 @@ const Audits = ({ user }) => {
           <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
         </div>
       ) : !selectedCycle ? (
-        <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
-          <div className="px-6 py-5 border-b border-line flex items-center justify-between bg-surface/30">
-            <h3 className="font-bold text-ink text-sm flex items-center gap-2">
+        <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
+          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
               <ClipboardCheck className="w-4 h-4 text-brand" /> Reconciliation Cycles
             </h3>
           </div>

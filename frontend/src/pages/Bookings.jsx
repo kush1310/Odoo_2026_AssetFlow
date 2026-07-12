@@ -152,14 +152,15 @@ const Bookings = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Resource Bookings</h2>
-          <p className="text-sm text-gray-500">Schedule shared rooms, equipment, or pool vehicles without overlap conflicts.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Resource Bookings</h2>
+          <p className="text-sm text-slate-400 font-medium">Schedule shared rooms, equipment, or pool vehicles without overlap conflicts.</p>
         </div>
         <button 
           onClick={() => setShowBookModal(true)}
-          className="btn btn-primary whitespace-nowrap"
+          className="btn btn-primary whitespace-nowrap relative z-10"
         >
           <CalendarDays className="w-4 h-4 mr-2" />
           New Booking
@@ -171,10 +172,10 @@ const Bookings = ({ user }) => {
           <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-white border border-line rounded-2xl shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-line">
+        <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
             <CalendarCheck className="w-5 h-5 text-brand" />
-            <h3 className="font-bold text-lg text-ink">Upcoming Schedule</h3>
+            <h3 className="font-extrabold text-lg text-slate-900">Upcoming Schedule</h3>
           </div>
           
           {Object.keys(groupedBookings).length === 0 ? (

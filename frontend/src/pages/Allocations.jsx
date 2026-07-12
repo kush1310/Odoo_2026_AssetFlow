@@ -169,12 +169,13 @@ const Allocations = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Custody & Allocations</h2>
-          <p className="text-sm text-gray-500">Track custody allocations, check in returned assets, or initiate peer-to-peer transfers.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Custody & Allocations</h2>
+          <p className="text-sm text-slate-400 font-medium">Track custody allocations, check in returned assets, or initiate peer-to-peer transfers.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 relative z-10">
           {user?.role !== 'Employee' && (
             <button 
               onClick={() => setShowAllocModal(true)}
@@ -188,7 +189,7 @@ const Allocations = ({ user }) => {
             onClick={() => setShowTransferModal(true)}
             className="btn btn-secondary"
           >
-            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            <ArrowLeftRight className="w-4 h-4 mr-2 text-brand" />
             Request Transfer
           </button>
         </div>
@@ -201,12 +202,12 @@ const Allocations = ({ user }) => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ACTIVE ALLOCATIONS */}
-          <div className="bg-white border border-line rounded-2xl flex flex-col shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-surface/30">
-              <h3 className="font-bold text-ink text-sm flex items-center gap-2">
+          <div className="bg-white border border-slate-100 rounded-2xl flex flex-col shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-brand" /> Active Allocations
               </h3>
-              <span className="text-xs font-semibold text-gray-500 bg-surface px-2.5 py-1 rounded-full border border-line">
+              <span className="text-xs font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
                 {activeAllocations.length} total
               </span>
             </div>
@@ -288,12 +289,12 @@ const Allocations = ({ user }) => {
           </div>
 
           {/* CUSTODY TRANSFERS */}
-          <div className="bg-white border border-line rounded-2xl flex flex-col shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-surface/30">
-              <h3 className="font-bold text-ink text-sm flex items-center gap-2">
+          <div className="bg-white border border-slate-100 rounded-2xl flex flex-col shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                 <ArrowLeftRight className="w-4 h-4 text-brand" /> Custody Transfer Requests
               </h3>
-              <span className="text-xs font-semibold text-gray-500 bg-surface px-2.5 py-1 rounded-full border border-line">
+              <span className="text-xs font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
                 {transfers.length} total
               </span>
             </div>

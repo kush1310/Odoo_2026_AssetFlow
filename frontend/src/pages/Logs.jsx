@@ -54,9 +54,10 @@ const Logs = () => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink flex items-center gap-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 shrink-0 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             System Audit Logs 
             {hasUnread && (
               <span className="flex h-3 w-3 relative ml-1">
@@ -65,14 +66,14 @@ const Logs = () => {
               </span>
             )}
           </h2>
-          <p className="text-sm text-gray-500">View real-time immutable logs of resource operations and system mutations.</p>
+          <p className="text-sm text-slate-400 font-medium">View real-time immutable logs of resource operations and system mutations.</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 relative z-10">
           {hasUnread && (
             <button 
               onClick={markAllRead}
-              className="btn btn-secondary text-gray-600 border-gray-300 hover:bg-gray-50 bg-white"
+              className="btn btn-secondary text-slate-650 border-slate-200 hover:bg-slate-50 bg-white"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />
               Mark All Read
@@ -81,9 +82,9 @@ const Logs = () => {
         </div>
       </div>
 
-      <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-line px-6 pt-4 bg-surface/30">
+        <div className="flex gap-2 border-b border-slate-100 px-6 pt-4 bg-slate-50">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

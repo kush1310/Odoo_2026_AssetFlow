@@ -298,14 +298,15 @@ const Maintenance = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 h-[calc(100vh-6rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Maintenance Board</h2>
-          <p className="text-sm text-gray-500">Drag tickets to update status or assign tasks.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 shrink-0 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Maintenance Board</h2>
+          <p className="text-sm text-slate-400 font-medium">Drag tickets to update status or assign tasks.</p>
         </div>
         <button 
           onClick={() => setShowRequestModal(true)}
-          className="btn btn-primary whitespace-nowrap"
+          className="btn btn-primary whitespace-nowrap relative z-10"
         >
           <Wrench className="w-4 h-4 mr-2" />
           Raise Ticket
@@ -322,12 +323,12 @@ const Maintenance = ({ user }) => {
             {cols.map(col => {
               const colItems = getColItems(col.statuses);
               return (
-                <div key={col.id} className="bg-surface border border-line p-4 rounded-2xl flex flex-col gap-4 min-w-[300px] w-full max-w-sm shrink-0">
-                  <div className="flex justify-between items-center pb-2 border-b border-line">
-                    <span className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                <div key={col.id} className="bg-slate-100/50 border border-slate-100 p-4 rounded-2xl flex flex-col gap-4 min-w-[300px] w-full max-w-sm shrink-0">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                       {col.title}
                     </span>
-                    <span className="bg-white text-gray-600 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm border border-line">
+                    <span className="bg-white text-slate-400 px-2.5 py-0.5 rounded-lg text-xs font-bold shadow-sm border border-slate-100">
                       {colItems.length}
                     </span>
                   </div>
