@@ -2,14 +2,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # --- DATABASE CONFIGURATION ---
-# Default: SQLite for hackathon/local dev (no setup required)
-# To switch to PostgreSQL, replace the line below with:
-#   SQLALCHEMY_DATABASE_URL = "postgresql://user:password@localhost:5432/assetflow_db"
-SQLALCHEMY_DATABASE_URL = "sqlite:///./assetflow.db"
+# PostgreSQL — production grade, as mandated by project requirements
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:CyberKush@localhost:5432/assetflow_db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}  # SQLite only — remove for Postgres
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=1800
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
