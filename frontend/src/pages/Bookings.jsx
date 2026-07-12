@@ -145,7 +145,6 @@ const Bookings = ({ user }) => {
   };
 
   // Group bookings by date for the calendar view
-  const groupedBookings = bookings
   const activeBookings = bookings
     .filter(b => b.status !== 'Cancelled')
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -279,6 +278,8 @@ const Bookings = ({ user }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-line">
               <p className="text-xs text-gray-500">
@@ -302,7 +303,6 @@ const Bookings = ({ user }) => {
             
             <motion.form 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               variants={shakeVariants}
               animate={shake ? "shake" : { opacity: 1, scale: 1, y: 0 }}
