@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @theme {
   --color-ink: #101826;
@@ -16,8 +17,6 @@
 }
 
 @layer base {
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
   :root {
     --ink: #101826;
     --surface: #F6F7F9;
@@ -34,6 +33,7 @@
     @apply bg-surface text-ink antialiased font-sans;
   }
 }
+
 
 @layer components {
   /* Buttons */
