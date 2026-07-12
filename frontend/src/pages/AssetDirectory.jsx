@@ -32,6 +32,9 @@ const AssetDirectory = ({ user }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [page, setPage] = useState(1);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [simulatedTag, setSimulatedTag] = useState('');
 
   // Register Modal state (We'll use a styled modal for registration)
   const [showRegModal, setShowRegModal] = useState(false);
@@ -75,6 +78,11 @@ const AssetDirectory = ({ user }) => {
 
   useEffect(() => {
     loadData();
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
   }, []);
 
   const handleRegister = async (e) => {
@@ -161,14 +169,72 @@ const AssetDirectory = ({ user }) => {
     loadAssetHistory(asset.id);
   };
 
+  const downloadQR = () => {
+    if (!selectedAsset) return;
+    const svg = document.getElementById("qr-svg-code");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = svgUrl;
+    downloadLink.download = `QR-${selectedAsset.tag}.svg`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    addToast(`QR Code for ${selectedAsset.tag} downloaded successfully.`, "success");
+  };
+
+  const printQR = () => {
+    if (!selectedAsset) return;
+    const svg = document.getElementById("qr-svg-code");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print QR - ${selectedAsset.tag}</title>
+          <style>
+            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
+            .label { margin-top: 15px; font-weight: bold; font-size: 16px; font-family: monospace; letter-spacing: 0.05em; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div style="transform: scale(1.5); display: flex; flex-direction: column; align-items: center;">
+            ${svgData}
+            <div class="label">${selectedAsset.tag}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // Filter logic
+  // Fuzzy match helper function
+  const fuzzyMatch = (text, query) => {
+    if (!query) return true;
+    if (!text) return false;
+    const cleanText = text.toLowerCase();
+    const cleanQuery = query.toLowerCase();
+    let queryIdx = 0;
+    for (let charIdx = 0; charIdx < cleanText.length; charIdx++) {
+      if (cleanText[charIdx] === cleanQuery[queryIdx]) {
+        queryIdx++;
+        if (queryIdx === cleanQuery.length) return true;
+      }
+    }
+    return false;
+  };
+
   // Filter logic
   const filteredAssets = assets.filter(asset => {
-    const matchesSearch = 
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.tag.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (asset.serial_number && asset.serial_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      asset.location.toLowerCase().includes(searchQuery.toLowerCase());
-      
+    const matchesSearch =
+      fuzzyMatch(asset.name, searchQuery) ||
+      fuzzyMatch(asset.tag, searchQuery) ||
+      (asset.serial_number && fuzzyMatch(asset.serial_number, searchQuery)) ||
+      fuzzyMatch(asset.location, searchQuery);
     const matchesCategory = filterCategory === 'All' ? true : asset.category_id === parseInt(filterCategory);
     const matchesStatus = filterStatus === 'All' ? true : asset.status === filterStatus;
     
@@ -197,16 +263,27 @@ const AssetDirectory = ({ user }) => {
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex flex-col gap-5">
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-450" />
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by tag, name, serial or location..."
-            className="input-field pl-11 h-12 text-base"
-          />
+      <div className="bg-white border border-line p-5 rounded-2xl shadow-sm flex flex-col gap-5">
+        <div className="relative flex gap-3">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by tag, name, serial or location..."
+              className="input-field pl-10 h-12 text-base"
+            />
+          </div>
+          <RippleButton 
+            type="button" 
+            variant="secondary"
+            onClick={() => setShowQRModal(true)} 
+            className="flex items-center gap-2 px-4 border border-line rounded-xl"
+          >
+            <QrCode className="w-5.5 h-5.5 text-gray-500" />
+            <span className="hidden sm:inline">Scan QR</span>
+          </RippleButton>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -481,13 +558,31 @@ const AssetDirectory = ({ user }) => {
               <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
                 {/* QR Code and Quick Stats */}
                 <div className="flex gap-6 items-center">
-                  <div className="p-3 bg-white border border-line rounded-xl shadow-sm">
-                    <QRCodeSVG 
-                      value={JSON.stringify({ tag: selectedAsset.tag, id: selectedAsset.id })}
-                      size={80}
-                      level={"L"}
-                      includeMargin={false}
-                    />
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 bg-white border border-line rounded-xl shadow-sm">
+                      <QRCodeSVG 
+                        id="qr-svg-code"
+                        value={`${window.location.origin}/assets?search=${selectedAsset.tag}`}
+                        size={80}
+                        level={"L"}
+                        includeMargin={false}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={downloadQR}
+                        className="text-[10px] text-brand hover:underline font-bold"
+                      >
+                        Download
+                      </button>
+                      <span className="text-[10px] text-gray-300">|</span>
+                      <button 
+                        onClick={printQR}
+                        className="text-[10px] text-brand hover:underline font-bold"
+                      >
+                        Print
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-3 flex-1">
                     <div className="flex justify-between items-center border-b border-line pb-2">
@@ -583,71 +678,74 @@ const AssetDirectory = ({ user }) => {
         )}
       </AnimatePresence>
 
-      {/* SELL ASSET MODAL */}
+      {/* QR CODE SCANNER MODAL */}
       <AnimatePresence>
-        {showSellModal && (
+        {showQRModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
               className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
-              onClick={() => setShowSellModal(false)}
+              onClick={() => setShowQRModal(false)}
             />
-            <motion.form 
+            <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onSubmit={handleSellAsset} 
-              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-2xl z-55"
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-xl z-50"
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-lg text-ink flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-emerald-600" /> Sell Asset: {selectedAsset?.name}
-                </h3>
-                <button type="button" onClick={() => setShowSellModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+                <h3 className="font-bold text-lg text-ink">Simulated QR Code Scanner</h3>
+                <button type="button" onClick={() => setShowQRModal(false)} className="text-gray-400 hover:text-ink">
+                  <X className="w-5 h-5"/>
+                </button>
               </div>
 
-              {sellError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-rust text-xs font-semibold flex gap-2 items-start">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <p>{sellError}</p>
-                </div>
-              )}
+              <div className="relative w-full h-48 bg-slate-900 rounded-xl overflow-hidden flex flex-col items-center justify-center border-2 border-dashed border-brand/50">
+                {/* Scan Grid Overlay Animation */}
+                <div className="absolute inset-0 bg-gradient-to-b from-brand/5 to-transparent animate-pulse" />
+                <div className="absolute left-0 right-0 h-0.5 bg-brand shadow-lg shadow-brand/50 animate-bounce top-1/4" style={{ animationDuration: '3s' }} />
+                
+                <QrCode className="w-16 h-16 text-brand/80 animate-pulse relative z-10" />
+                <span className="text-xs font-bold text-brand uppercase tracking-widest mt-3 relative z-10 animate-pulse">Pulsing Scan Laser Grid</span>
+              </div>
 
-              <div>
-                <label className="label">Selling Price ($)</label>
+              <div className="flex flex-col gap-2 mt-2">
+                <label className="label">Select Scannable Asset Tag</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><DollarSign className="w-4 h-4"/></span>
-                  <input 
-                    type="number" step="0.01" required value={sellPrice} onChange={(e) => {setSellPrice(e.target.value); setSellError('');}}
-                    placeholder="0.00" className="input-field pl-9"
+                  <AnimatedSelect
+                    label="Choose tag to simulate scan"
+                    placeholder="Choose tag to simulate scan"
+                    options={assets.map(a => ({ value: a.tag, label: `${a.tag} - ${a.name} (${a.status})` }))}
+                    value={simulatedTag}
+                    onChange={setSimulatedTag}
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="label">Buyer Name</label>
-                <input 
-                  type="text" required value={sellBuyer} onChange={(e) => {setSellBuyer(e.target.value); setSellError('');}}
-                  placeholder="e.g. John Doe / External Vendor" className="input-field"
-                />
-              </div>
-
-              <div>
-                <label className="label">Sale / Disposal Notes</label>
-                <textarea 
-                  value={sellNotes} onChange={(e) => setSellNotes(e.target.value)}
-                  placeholder="e.g. Asset sold as surplus hardware..." rows="3"
-                  className="input-field h-auto py-3"
-                />
-              </div>
-
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowSellModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600" disabled={selling}>
-                  {selling ? "Selling..." : "Confirm Sale"}
-                </button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowQRModal(false)}>Cancel</RippleButton>
+                <RippleButton 
+                  type="button" 
+                  variant="primary" 
+                  disabled={!simulatedTag}
+                  onClick={async () => {
+                    try {
+                      await api.post('/assets/qr-log', { tag: simulatedTag });
+                      setSearchQuery(simulatedTag);
+                      addToast(`Successfully scanned asset ${simulatedTag}! Scanned event registered in database.`, "success");
+                      setShowQRModal(false);
+                      setSimulatedTag('');
+                    } catch (err) {
+                      addToast("Failed to register scan event.", "error");
+                    }
+                  }}
+                >
+                  Trigger QR Scan
+                </RippleButton>
               </div>
-            </motion.form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

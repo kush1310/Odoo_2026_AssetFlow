@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import RippleButton from './RippleButton';
 
@@ -68,17 +69,17 @@ export function AlertDialogPopup({ children, className = '', from = 'bottom' }) 
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           {/* Backdrop overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
-            className="absolute inset-0 bg-ink/40 backdrop-blur-sm pointer-events-auto"
+            className="absolute inset-0 bg-ink/65 backdrop-blur-md pointer-events-auto"
           />
 
           {/* Modal Container */}
@@ -88,13 +89,14 @@ export function AlertDialogPopup({ children, className = '', from = 'bottom' }) 
             animate="visible"
             exit="exit"
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className={`relative w-full bg-white border border-line rounded-2xl p-6 shadow-xl flex flex-col gap-4 overflow-hidden pointer-events-auto z-10 ${className}`}
+            className={`relative w-full bg-white border border-line rounded-2xl p-6 shadow-2xl flex flex-col gap-4 overflow-hidden pointer-events-auto z-10 ${className}`}
           >
             {children}
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

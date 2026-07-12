@@ -56,7 +56,15 @@ const ResetPassword = () => {
         navigate('/login', { state: { message: "Password updated successfully. Please log in with your new password." } });
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || "Password reset failed. The token may be invalid or expired.");
+      let errMsg = err.response?.data?.detail;
+      if (typeof errMsg === 'object' && errMsg !== null) {
+        if (Array.isArray(errMsg)) {
+          errMsg = errMsg.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        } else {
+          errMsg = JSON.stringify(errMsg);
+        }
+      }
+      setError(errMsg || "Password reset failed. The token may be invalid or expired.");
     } finally {
       setLoading(false);
     }

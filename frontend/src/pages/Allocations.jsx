@@ -66,6 +66,10 @@ const Allocations = ({ user }) => {
 
   useEffect(() => {
     loadData();
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('transfer') === 'true') {
+      setShowTransferModal(true);
+    }
   }, []);
 
   const handleAllocate = async (e) => {
@@ -433,18 +437,32 @@ const Allocations = ({ user }) => {
                 </select>
               </div>
 
-              <div>
-                <label className="label">Select Custodian Employee</label>
-                <select 
-                  required value={allocEmployee} onChange={(e) => setAllocEmployee(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Select Employee</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              </div>
+               {allocAsset && (() => {
+                 const selectedAssetObj = assets.find(a => String(a.id) === allocAsset);
+                 if (selectedAssetObj && selectedAssetObj.status !== 'Available') {
+                   const activeAlloc = allocations.find(a => a.asset_id === selectedAssetObj.id && (a.state === 'approved' || a.state === 'overdue'));
+                   const warningText = activeAlloc 
+                     ? `Already allocated to ${activeAlloc.employee_name} (${activeAlloc.department_name || 'No Dept'}). Direct reallocation is blocked.`
+                     : `Asset is currently ${selectedAssetObj.status}. Direct reallocation is blocked.`;
+                   return (
+                     <div className="p-3 bg-red-50 border border-red-200 text-rust text-xs rounded-lg font-medium">
+                       {warningText}
+                     </div>
+                   );
+                 }
+                 return null;
+               })()}
+
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Select Custodian Employee"
+                   required
+                   placeholder="Search and select employee..."
+                   options={employees.map(emp => ({ value: String(emp.id), label: emp.name }))}
+                   value={allocEmployee}
+                   onChange={setAllocEmployee}
+                 />
+               </div>
 
               <div>
                 <label className="label">Allocation Date</label>

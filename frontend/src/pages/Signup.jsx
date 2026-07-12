@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { Key, Mail, ShieldAlert, Eye, EyeOff, Package, User } from 'lucide-react';
-import { motion } from 'framer-motion';
-import AssetTagChip from '../components/AssetTagChip';
+import { ShieldAlert, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import GravityStars from '../components/ui/GravityStars';
+import RippleButton from '../components/ui/RippleButton';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
+import { useToast } from '../components/Toast';
+import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -48,7 +52,17 @@ const Signup = () => {
       // Redirect to login after successful signup
       navigate('/login', { state: { message: "Account created successfully. Please log in." } });
     } catch (err) {
-      setError(err.response?.data?.detail || "Registration failed. Please check your details.");
+      let errMsg = err.response?.data?.detail;
+      if (typeof errMsg === 'object' && errMsg !== null) {
+        if (Array.isArray(errMsg)) {
+          errMsg = errMsg.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        } else {
+          errMsg = JSON.stringify(errMsg);
+        }
+      }
+      errMsg = errMsg || 'Registration failed. Please check your details.';
+      setError(errMsg);
+      addToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -60,23 +74,32 @@ const Signup = () => {
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-light/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Brand Panel (Left) */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand-deep via-brand to-brand p-16 flex-col justify-between relative overflow-hidden">
-        {/* Subtle grid pattern in panel */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 text-white mb-12">
-            <span className="bg-white/10 backdrop-blur-md border border-white/20 p-2 rounded-xl shadow-sm">
-              <Package className="w-6 h-6 text-brand-light" />
-            </span>
-            <span className="text-2xl font-bold tracking-tight text-white">AssetFlow</span>
-          </div>
-          <h2 className="text-5xl font-extrabold text-white mb-6 leading-tight tracking-tight">
-            Join your<br />organization.
-          </h2>
-          <p className="text-teal-50/80 text-lg max-w-md leading-relaxed">
-            Create an employee account to request assets, book resources, and track your allocations.
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 w-full max-w-[440px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col gap-6 overflow-hidden"
+      >
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/90 backdrop-blur-[2px] flex items-center justify-center z-50"
+            >
+              <LoadingIndicator type="dot-circle" size="md" label="Creating Account..." />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Header */}
+        <div className="flex flex-col gap-2 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Create an account
+          </h1>
+          <p className="text-sm text-gray-500">
+            Start tracking assets inside your team.
           </p>
         </div>
         

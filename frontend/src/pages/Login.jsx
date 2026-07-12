@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { Key, Mail, ShieldAlert, Eye, EyeOff, Package, Loader2 } from 'lucide-react';
+import { ShieldAlert, Eye, EyeOff, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssetTagChip from '../components/AssetTagChip';
 import { useToast } from '../components/Toast';
+import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 
 const Login = ({ setUser }) => {
   const navigate = useNavigate();
@@ -89,7 +90,15 @@ const Login = ({ setUser }) => {
       addToast("Successfully logged in!", "success");
       navigate('/');
     } catch (err) {
-      const errMsg = err.response?.data?.detail || 'Authentication failed. Please verify credentials.';
+      let errMsg = err.response?.data?.detail;
+      if (typeof errMsg === 'object' && errMsg !== null) {
+        if (Array.isArray(errMsg)) {
+          errMsg = errMsg.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        } else {
+          errMsg = JSON.stringify(errMsg);
+        }
+      }
+      errMsg = errMsg || 'Authentication failed. Please verify credentials.';
       setError(errMsg);
       addToast(errMsg, "error");
     } finally {
@@ -103,22 +112,40 @@ const Login = ({ setUser }) => {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex relative overflow-hidden" data-no-transition>
-      
-      {/* Brand Panel (Left) */}
-      <div className="hidden lg:flex w-[55%] bg-brand p-12 flex-col justify-between relative overflow-hidden">
-        {/* Animated Gradient Mesh */}
-        <div className="mesh-bg">
-          <motion.div 
-            animate={{ x: [0, 50, 0], y: [0, -50, 0], scale: [1, 1.2, 1] }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="mesh-blob bg-[#14B8A6] w-96 h-96 top-0 left-0" 
-          />
-          <motion.div 
-            animate={{ x: [0, -60, 0], y: [0, 60, 0], scale: [1, 1.5, 1] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="mesh-blob bg-[#0D5D57] w-[30rem] h-[30rem] bottom-0 right-0" 
-          />
+    <div className="min-h-screen relative overflow-hidden bg-[#F9FAFB] flex items-center justify-center p-4">
+      {/* Premium subtle star field background */}
+      <GravityStars starCount={50} starColor="#7F56D9" className="z-0 opacity-40" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 w-full max-w-[440px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col gap-6 overflow-hidden"
+      >
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/90 backdrop-blur-[2px] flex items-center justify-center z-50"
+            >
+              <LoadingIndicator type="dot-circle" size="md" label="Authenticating..." />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Header */}
+        <div className="flex flex-col gap-2 items-center text-center">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-[#7F56D9]">
+            <Activity className="w-6 h-6 animate-pulse" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mt-2">
+            AssetFlow Login
+          </h1>
+          <p className="text-sm text-gray-500">
+            Welcome back! Please enter your details.
+          </p>
         </div>
 
         <div className="relative z-10">

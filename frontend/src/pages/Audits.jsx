@@ -290,6 +290,79 @@ const Audits = ({ user }) => {
               </div>
             </div>
 
+            {/* AUTO-GENERATED DISCREPANCIES SUMMARY BOX FOR CLOSED CYCLES */}
+            {selectedCycle.status === 'Closed' && selectedCycle.discrepancy_report && (() => {
+              try {
+                const report = JSON.parse(selectedCycle.discrepancy_report);
+                return (
+                  <div className="bg-amber-50/50 border border-amber/20 rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-amber border-b border-amber/10 pb-3">
+                      <AlertTriangle className="w-5 h-5 text-amber" />
+                      <h4 className="font-bold text-sm text-ink uppercase tracking-wider">Auto-Generated Discrepancy Audit Report</h4>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <span className="text-gray-500 font-medium">Reconciled By</span>
+                        <p className="font-bold text-ink mt-0.5">{report.closed_by || "System Admin"}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">Close Date</span>
+                        <p className="font-bold text-ink mt-0.5">{report.close_date}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">Assets Audited</span>
+                        <p className="font-bold text-ink mt-0.5">{report.total_assets}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">Discrepancies Flagged</span>
+                        <p className="font-bold text-rust mt-0.5 font-mono">{report.discrepancies?.length || 0}</p>
+                      </div>
+                    </div>
+
+                    {report.discrepancies?.length > 0 ? (
+                      <div className="overflow-x-auto border border-line rounded-xl mt-2 bg-white">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-surface border-b border-line text-gray-500 font-semibold uppercase tracking-wider text-[9px]">
+                            <tr>
+                              <th className="py-2.5 px-4">Asset Tag</th>
+                              <th className="py-2.5 px-4">Asset Name</th>
+                              <th className="py-2.5 px-4">Expected Location</th>
+                              <th className="py-2.5 px-4">Audit Result</th>
+                              <th className="py-2.5 px-4">Notes / Variance</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-line font-medium text-gray-600">
+                            {report.discrepancies.map((disc, dIdx) => (
+                              <tr key={`disc-${dIdx}`} className="hover:bg-surface/50">
+                                <td className="py-2.5 px-4 font-mono font-bold text-ink">{disc.asset_tag}</td>
+                                <td className="py-2.5 px-4">{disc.asset_name}</td>
+                                <td className="py-2.5 px-4">{disc.expected_location}</td>
+                                <td className="py-2.5 px-4">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider
+                                    ${disc.result === 'Missing' ? 'bg-red-50 text-rust border-red-200' : 'bg-amber/10 text-amber border-amber/20'}
+                                  `}>
+                                    {disc.result}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-4 italic text-gray-500">"{disc.notes || 'No notes provided'}"</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-white border border-line rounded-xl text-center text-xs text-gray-500 font-medium">
+                        No physical location or status discrepancies were flagged during this reconciliation cycle.
+                      </div>
+                    )}
+                  </div>
+                );
+              } catch (e) {
+                return null;
+              }
+            })()}
+
             {/* Checklist Grid */}
             <div className="bg-white border border-line rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
               <div className="px-6 py-4 border-b border-line bg-surface/30 flex justify-between items-center">

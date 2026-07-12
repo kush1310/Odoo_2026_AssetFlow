@@ -49,9 +49,23 @@ class UserResponse(BaseModel):
     department_id: Optional[int] = None
     status: str
     created_at: datetime
+    phone: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[date] = None
+    company_username: Optional[str] = None
+    employee_id_tag: Optional[str] = None
+    profile_picture: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[date] = None
+    company_username: Optional[str] = None
+    profile_picture: Optional[str] = None
 
 class UserMinimal(BaseModel):
     id: int
@@ -276,9 +290,15 @@ class MaintenanceCreate(BaseModel):
 
 class MaintenanceAssign(BaseModel):
     technician_id: int
+    scheduled_time: datetime
+    duration_minutes: Optional[int] = 60
 
 class MaintenanceResolve(BaseModel):
     resolution_notes: str
+    parts_replaced: str
+
+class MaintenanceExtendRequest(BaseModel):
+    extension_minutes: int
 
 class MaintenanceReject(BaseModel):
     rejection_reason: str
@@ -297,6 +317,9 @@ class MaintenanceResponse(BaseModel):
     technician_id: Optional[int] = None
     resolution_notes: Optional[str] = None
     resolved_date: Optional[date] = None
+    scheduled_time: Optional[datetime] = None
+    duration_minutes: int = 60
+    parts_replaced: Optional[str] = None
     # Enriched
     asset_tag: Optional[str] = None
     asset_name: Optional[str] = None
@@ -348,6 +371,7 @@ class AuditCycleResponse(BaseModel):
     auditor_names: List[str] = []
     total_lines: int = 0
     verified_lines: int = 0
+    discrepancy_report: Optional[str] = None
 
     class Config:
         from_attributes = True

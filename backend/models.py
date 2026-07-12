@@ -18,6 +18,14 @@ class User(Base):
     token_version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # User Profile Details
+    phone = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    dob = Column(Date, nullable=True)
+    company_username = Column(String, nullable=True)
+    employee_id_tag = Column(String, unique=True, index=True, nullable=True)
+    profile_picture = Column(String, nullable=True) # base64 or file path
+
     department = relationship("Department", foreign_keys=[department_id], back_populates="employees")
     allocations = relationship("Allocation", back_populates="employee")
     bookings = relationship("Booking", back_populates="booked_by")
@@ -143,6 +151,9 @@ class MaintenanceRequest(Base):
     technician_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     resolution_notes = Column(String, nullable=True)
     resolved_date = Column(Date, nullable=True)
+    scheduled_time = Column(DateTime(timezone=True), nullable=True)
+    duration_minutes = Column(Integer, default=60, nullable=False)
+    parts_replaced = Column(String, nullable=True)
 
     asset = relationship("Asset", back_populates="maintenance_records")
     raised_by = relationship("User", foreign_keys=[raised_by_id], back_populates="maintenance_requests")
@@ -159,6 +170,7 @@ class AuditCycle(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     status = Column(String, default="Draft", nullable=False) # Draft, In Progress, Closed
+    discrepancy_report = Column(String, nullable=True)
 
     department = relationship("Department")
     lines = relationship("AuditLine", back_populates="audit_cycle", cascade="all, delete-orphan")

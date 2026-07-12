@@ -13,18 +13,18 @@ import api from '../api';
 
 const HELP_TOPICS = [
   {
-    title: 'What is Animate UI?',
-    content: 'Animate UI is an open-source distribution of React components built with TypeScript, Tailwind CSS, and Motion.',
+    title: 'What is AssetFlow?',
+    content: 'AssetFlow is a centralized corporate asset management platform designed to track the custody, maintenance, bookings, and auditing cycles of hardware, software, and furniture resources in real-time.',
     category: 'general'
   },
   {
-    title: 'How is it different from other libraries?',
-    content: 'Instead of installing via NPM, you copy and paste the components directly. This gives you full control to modify or customize them as needed.',
+    title: 'Who approves my asset requests?',
+    content: 'Asset requests are routed automatically based on role hierarchy. First, your Department Head reviews the request. Upon their endorsement, the Asset Manager performs the physical allocation and update in the database.',
     category: 'general'
   },
   {
-    title: 'Is Animate UI free to use?',
-    content: 'Absolutely! Animate UI is fully open-source. You can use, modify, and adapt it to fit your needs.',
+    title: 'What role privileges are configured on the platform?',
+    content: 'We support Role-Based Access Control (RBAC) with four tiers: Employee (request custody, schedule shared assets), Department Head (approve custody requests for their team), Asset Manager (full inventory management, reconcile audits), and Administrator (manage users, departments, and system configurations).',
     category: 'general'
   },
   {

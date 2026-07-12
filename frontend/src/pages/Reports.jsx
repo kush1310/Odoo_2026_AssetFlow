@@ -68,16 +68,20 @@ const reportTypes = [
 
 const Reports = () => {
   const [activeReport, setActiveReport] = useState(reportTypes[0].id);
-  const [selectedFormat, setSelectedFormat] = useState('csv');
   const [isExporting, setIsExporting] = useState(false);
+  const [previewData, setPreviewData] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
   const { addToast } = useToast();
 
-  const handleExport = async (report) => {
+  const currentReport = reportTypes.find(r => r.id === activeReport);
+
+  const handleExport = async (report, format) => {
     setIsExporting(true);
     try {
-      if (selectedFormat === 'csv') {
+      if (format === 'csv') {
         const res = await api.get(report.endpoint);
-        const data = res.data;
+        const data = Array.isArray(res.data) ? res.data : (res.data.data && Array.isArray(res.data.data) ? res.data.data : []);
         
         if (!data || data.length === 0) {
           addToast("No data available to export for this report.", "error");
@@ -85,10 +89,17 @@ const Reports = () => {
           return;
         }
 
-        // Robust JSON to CSV converter (handles nested objects safely)
-        const headers = Object.keys(data[0]).join(',');
+        // Safe JSON to CSV converter (filters out nested objects/relations)
+        const firstItem = data[0];
+        const scalarKeys = Object.keys(firstItem).filter(key => {
+          const val = firstItem[key];
+          return val === null || val === undefined || typeof val !== 'object';
+        });
+        
+        const headers = scalarKeys.join(',');
         const rows = data.map(obj => 
-          Object.values(obj).map(val => {
+          scalarKeys.map(key => {
+            const val = obj[key];
             if (val === null || val === undefined) return '""';
             const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
             return `"${str.replace(/"/g, '""')}"`;
@@ -99,15 +110,15 @@ const Reports = () => {
         const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
         triggerDownload(blob, `AssetFlow_${report.id}_report_${new Date().toISOString().split('T')[0]}.csv`);
       } else {
-        const res = await api.get(`${report.endpoint}?export=${selectedFormat}`, { responseType: 'blob' });
+        const res = await api.get(`${report.endpoint}?export=${format}`, { responseType: 'blob' });
         const typeMap = {
           pdf: 'application/pdf',
           xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         };
-        const blob = new Blob([res.data], { type: typeMap[selectedFormat] });
-        triggerDownload(blob, `AssetFlow_${report.id}_report_${new Date().toISOString().split('T')[0]}.${selectedFormat}`);
+        const blob = new Blob([res.data], { type: typeMap[format] });
+        triggerDownload(blob, `AssetFlow_${report.id}_report_${new Date().toISOString().split('T')[0]}.${format}`);
       }
-      addToast(`Successfully exported ${report.title} as ${selectedFormat.toUpperCase()}.`, "success");
+      addToast(`Successfully exported ${report.title} as ${format.toUpperCase()}.`, "success");
     } catch (err) {
       addToast(`Failed to generate report: ${err.message}`, "error");
     } finally {
@@ -126,14 +137,31 @@ const Reports = () => {
     URL.revokeObjectURL(url);
   };
 
-  const currentReport = reportTypes.find(r => r.id === activeReport);
-
-  // Auto-correct selectedFormat if active report doesn't support it
   React.useEffect(() => {
-    if (currentReport && !currentReport.formats.includes(selectedFormat)) {
-      setSelectedFormat(currentReport.formats[0]);
-    }
+    if (!currentReport) return;
+    const fetchPreview = async () => {
+      setPreviewLoading(true);
+      setPreviewData([]);
+      try {
+        const res = await api.get(currentReport.endpoint);
+        const data = Array.isArray(res.data) ? res.data : (res.data.data && Array.isArray(res.data.data) ? res.data.data : []);
+        setPreviewData(data.slice(0, 10)); // preview first 10 rows
+      } catch (err) {
+        console.error("Failed to load report preview", err);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+    fetchPreview();
   }, [activeReport]);
+
+  const getPreviewHeaders = (item) => {
+    if (!item) return [];
+    return Object.keys(item).filter(key => {
+      const val = item[key];
+      return val === null || val === undefined || typeof val !== 'object';
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
@@ -145,6 +173,43 @@ const Reports = () => {
             <FileText className="w-6 h-6 text-brand" /> Analytics & Reporting
           </h2>
           <p className="page-subtitle">Generate compliance, lifecycle, and utilization reports in multiple formats.</p>
+        </div>
+
+        {/* Top-Right Download Dropdown */}
+        <div className="relative w-full md:w-auto">
+          <button
+            onClick={() => setShowDownloadDropdown(prev => !prev)}
+            disabled={isExporting}
+            className="btn btn-primary w-full md:w-auto flex items-center justify-center gap-2"
+          >
+            {isExporting ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 shrink-0" />
+            )}
+            <span>{isExporting ? "Exporting..." : "Download Report"}</span>
+          </button>
+          
+          {showDownloadDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowDownloadDropdown(false)} />
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-line rounded-xl shadow-xl z-20 overflow-hidden py-1">
+                {currentReport?.formats.map(fmt => (
+                  <button
+                    key={fmt}
+                    onClick={() => {
+                      setShowDownloadDropdown(false);
+                      handleExport(currentReport, fmt);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-surface text-ink flex items-center gap-2 transition"
+                  >
+                    <FileDown className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span>Export as {fmt.toUpperCase()}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -179,7 +244,7 @@ const Reports = () => {
         </div>
 
         {/* Report Detail Panel */}
-        <div className="md:col-span-8 card p-6 md:p-10 flex flex-col justify-center min-h-[440px]">
+        <div className="md:col-span-8 bg-white border border-line rounded-2xl p-6 md:p-8 shadow-sm flex flex-col min-h-[400px]">
           <AnimatePresence mode="wait">
             {reportTypes.map(report => report.id === activeReport && (
               <motion.div 
@@ -187,68 +252,64 @@ const Reports = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col items-center text-center max-w-lg mx-auto gap-8 w-full"
+                className="flex flex-col gap-6 w-full"
               >
-                <div className="w-20 h-20 bg-[var(--bg-muted)] rounded-full flex items-center justify-center border-4 border-[var(--bg-panel)] shadow-lg shadow-brand/10 mb-2">
-                  <report.icon className="w-10 h-10 text-brand" />
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-2xl font-bold text-ink tracking-tight">{report.title}</h3>
-                  <p className="text-secondary leading-relaxed">{report.desc}</p>
-                </div>
-                
-                <div className="w-full flex flex-col gap-3 text-left bg-[var(--bg-muted)] p-5 rounded-2xl border border-line">
-                  <label className="label">Select Export Format</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {report.formats.map(fmt => (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => setSelectedFormat(fmt)}
-                        className={`py-2.5 px-4 rounded-xl border text-sm font-bold transition uppercase tracking-wide text-center
-                          ${selectedFormat === fmt 
-                            ? 'bg-brand/10 border-brand text-brand shadow-sm ring-1 ring-brand/30' 
-                            : 'bg-[var(--bg-panel)] border-line text-secondary hover:bg-[var(--bg-hover)]'
-                          }
-                        `}
-                      >
-                        {fmt}
-                      </button>
-                    ))}
+                <div className="flex items-center gap-4 border-b border-line pb-4 text-left">
+                  <div className="w-12 h-12 bg-surface rounded-xl flex items-center justify-center border border-line shadow-sm">
+                    <report.icon className="w-6 h-6 text-brand" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-ink">{report.title}</h3>
+                    <p className="text-xs text-gray-500">{report.desc}</p>
                   </div>
                 </div>
-                
-                <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl text-xs text-blue-800 dark:text-blue-300 text-left w-full">
-                  <div className="grid grid-cols-1 gap-1.5 mb-2">
-                    <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> <strong>Export Format:</strong> {selectedFormat.toUpperCase()}</span>
-                    <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> <strong>Data Source:</strong> Live system snapshot</span>
-                    {selectedFormat !== 'csv' && <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> <strong>Generator:</strong> Backend report engine</span>}
+
+                {/* Inline Preview Table */}
+                <div className="flex flex-col gap-3 w-full text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preview Table (Top 10 Records)</span>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold uppercase">
+                      Live Data
+                    </span>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-blue-200/50 dark:border-blue-500/20 flex gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-blue-500" />
-                    <span><strong>Note:</strong> Sensitive information like employee passwords are automatically excluded from the raw data endpoints.</span>
+
+                  <div className="overflow-x-auto rounded-xl border border-line bg-white shadow-inner max-h-[300px] overflow-y-auto">
+                    {previewLoading ? (
+                      <div className="flex justify-center items-center py-16">
+                        <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : previewData.length === 0 ? (
+                      <div className="py-16 text-center text-gray-500 text-xs">
+                        No records found in this report query.
+                      </div>
+                    ) : (
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-surface border-b border-line sticky top-0 z-10">
+                          <tr className="text-gray-500 font-semibold uppercase tracking-wider">
+                            {getPreviewHeaders(previewData[0]).map(h => (
+                              <th key={h} className="py-2.5 px-4 bg-surface border-b border-line whitespace-nowrap">{h.replace(/_/g, ' ')}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-line bg-white">
+                          {previewData.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-surface transition-colors">
+                              {getPreviewHeaders(row).map(h => (
+                                <td key={h} className="py-2.5 px-4 font-medium text-ink whitespace-nowrap">
+                                  {String(row[h] ?? '')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
-                
-                <button 
-                  onClick={() => handleExport(report)}
-                  disabled={isExporting}
-                  className="btn btn-primary w-full h-12 text-base shadow-brand shadow-lg"
-                >
-                  {isExporting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-5 h-5 mr-2" />
-                      Generate & Download {selectedFormat.toUpperCase()}
-                    </>
-                  )}
-                </button>
+
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl text-[11px] text-blue-800 text-left">
+                  <strong>Export Information:</strong> Use the "Download Report" dropdown at the top-right to save this data as CSV, Excel (XLSX), or PDF format.
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
