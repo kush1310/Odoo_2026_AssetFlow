@@ -12,6 +12,12 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { HandWrittenTitle } from '../components/ui/HandWrittenTitle';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
+import RippleButton from '../components/ui/RippleButton';
+import Pagination from '../components/ui/Pagination';
+
+const PAGE_SIZE = 10;
 
 const Bookings = ({ user }) => {
   const [assets, setAssets] = useState([]);
@@ -26,6 +32,9 @@ const Bookings = ({ user }) => {
   const [bookStart, setBookStart] = useState('');
   const [bookEnd, setBookEnd] = useState('');
   const [bookPurpose, setBookPurpose] = useState('');
+  
+  // Pagination
+  const [page, setPage] = useState(1);
   
   // Cancel confirmation dialog state
   const [confirmCancel, setConfirmCancel] = useState(null);
@@ -137,14 +146,19 @@ const Bookings = ({ user }) => {
 
   // Group bookings by date for the calendar view
   const groupedBookings = bookings
-    .filter(b => b.status !== 'Cancelled') // Only show active/completed in calendar view usually, or all
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-    .reduce((acc, booking) => {
-      const dateKey = new Date(booking.start_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-      if (!acc[dateKey]) acc[dateKey] = [];
-      acc[dateKey].push(booking);
-      return acc;
-    }, {});
+  const activeBookings = bookings
+    .filter(b => b.status !== 'Cancelled')
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+  const totalPages = Math.ceil(activeBookings.length / PAGE_SIZE);
+  const pagedBookings = activeBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const groupedBookings = pagedBookings.reduce((acc, booking) => {
+    const dateKey = new Date(booking.start_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(booking);
+    return acc;
+  }, {});
 
   const shakeVariants = {
     shake: { x: [-10, 10, -10, 10, -5, 5, 0], transition: { duration: 0.4 } }
@@ -152,18 +166,20 @@ const Bookings = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Resource Bookings</h2>
-          <p className="text-sm text-gray-500">Schedule shared rooms, equipment, or pool vehicles without overlap conflicts.</p>
+      <div className="bg-white p-6 rounded-2xl border border-line shadow-sm text-center">
+        <HandWrittenTitle 
+          title="Resource Bookings" 
+          subtitle="Schedule shared rooms, equipment, or pool vehicles without overlap conflicts."
+        />
+        <div className="mt-4 flex justify-center">
+          <RippleButton 
+            variant="primary"
+            onClick={() => setShowBookModal(true)}
+          >
+            <CalendarDays className="w-4 h-4" />
+            New Booking
+          </RippleButton>
         </div>
-        <button 
-          onClick={() => setShowBookModal(true)}
-          className="btn btn-primary whitespace-nowrap"
-        >
-          <CalendarDays className="w-4 h-4 mr-2" />
-          New Booking
-        </button>
       </div>
 
       {loading ? (
@@ -263,6 +279,12 @@ const Bookings = ({ user }) => {
                   </div>
                 </div>
               ))}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-line">
+              <p className="text-xs text-gray-500">
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, activeBookings.length)} of {activeBookings.length} bookings
+              </p>
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           )}
         </div>
@@ -306,18 +328,16 @@ const Bookings = ({ user }) => {
                 )}
               </AnimatePresence>
 
-              <div>
-                <label className="label">Select Shared Asset</label>
-                <select 
-                  required value={bookAsset} onChange={(e) => {setBookAsset(e.target.value); setConflictMsg('');}}
-                  className="input-field"
-                >
-                  <option value="">Select Resource...</option>
-                  {assets.map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>
-                  ))}
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Select Shared Asset"
+                   required
+                   placeholder="Select Resource..."
+                   options={assets.map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
+                   value={bookAsset}
+                   onChange={(val) => { setBookAsset(val); setConflictMsg(''); }}
+                 />
+               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -346,8 +366,8 @@ const Bookings = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowBookModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Confirm Booking</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowBookModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Confirm Booking</RippleButton>
               </div>
             </motion.form>
           </div>

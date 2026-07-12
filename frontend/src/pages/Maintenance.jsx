@@ -11,6 +11,9 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { HandWrittenTitle } from '../components/ui/HandWrittenTitle';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
+import RippleButton from '../components/ui/RippleButton';
 import { 
   DndContext, 
   closestCenter,
@@ -297,19 +300,21 @@ const Maintenance = ({ user }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 h-[calc(100vh-6rem)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4 shrink-0">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Maintenance Board</h2>
-          <p className="text-sm text-gray-500">Drag tickets to update status or assign tasks.</p>
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
+      <div className="bg-white p-6 rounded-2xl border border-line shadow-sm text-center">
+        <HandWrittenTitle 
+          title="Maintenance Dispatcher" 
+          subtitle="Track repair tickets, assign technician specialists, and update lifecycle statuses."
+        />
+        <div className="mt-4 flex justify-center">
+          <RippleButton 
+            variant="primary"
+            onClick={() => setShowRequestModal(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Raise Repair Ticket
+          </RippleButton>
         </div>
-        <button 
-          onClick={() => setShowRequestModal(true)}
-          className="btn btn-primary whitespace-nowrap"
-        >
-          <Wrench className="w-4 h-4 mr-2" />
-          Raise Ticket
-        </button>
       </div>
 
       {loading ? (
@@ -381,31 +386,30 @@ const Maintenance = ({ user }) => {
                 <button type="button" onClick={() => setShowRequestModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
               </div>
 
-              <div>
-                <label className="label">Select Affected Asset</label>
-                <select 
-                  required value={maintAsset} onChange={(e) => setMaintAsset(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Search asset...</option>
-                  {assets.map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>
-                  ))}
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Select Affected Asset"
+                   required
+                   placeholder="Search asset..."
+                   options={assets.map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
+                   value={maintAsset}
+                   onChange={setMaintAsset}
+                 />
+               </div>
 
-              <div>
-                <label className="label">Task Priority</label>
-                <select 
-                  value={maintPriority} onChange={(e) => setMaintPriority(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Task Priority"
+                   options={[
+                     { value: 'Low',      label: 'Low' },
+                     { value: 'Medium',   label: 'Medium' },
+                     { value: 'High',     label: 'High' },
+                     { value: 'Critical', label: 'Critical' },
+                   ]}
+                   value={maintPriority}
+                   onChange={setMaintPriority}
+                 />
+               </div>
 
               <div>
                 <label className="label">Issue Description</label>
@@ -417,8 +421,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowRequestModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Raise Ticket</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowRequestModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Raise Ticket</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -445,22 +449,20 @@ const Maintenance = ({ user }) => {
               </div>
               <p className="text-sm text-gray-500 mb-2">Assign a qualified specialist to this repair task.</p>
 
-              <div>
-                <label className="label">Select Technician</label>
-                <select 
-                  required value={assignTech} onChange={(e) => setAssignTech(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Select Tech...</option>
-                  {employees.filter(e => e.role !== 'Employee').map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
-                  ))}
-                </select>
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Technician"
+                  required
+                  placeholder="Select Tech..."
+                  options={employees.filter(e => e.role !== 'Employee').map(emp => ({ value: String(emp.id), label: `${emp.name} (${emp.role})` }))}
+                  value={assignTech}
+                  onChange={setAssignTech}
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setAssigningReq(null)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Confirm Assignment</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setAssigningReq(null)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Confirm Assignment</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -497,8 +499,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setResolvingReq(null)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary bg-green-600 hover:bg-green-700 text-white border-transparent">Resolve Ticket</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setResolvingReq(null)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Complete Resolution</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -535,8 +537,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setRejectingReq(null)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-danger">Reject Request</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setRejectingReq(null)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="danger">Reject Request</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -547,3 +549,4 @@ const Maintenance = ({ user }) => {
 };
 
 export default Maintenance;
+

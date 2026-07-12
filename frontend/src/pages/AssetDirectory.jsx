@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Plus, 
-  History, 
-  SlidersHorizontal, 
-  Trash2, 
+import {
+  Search,
+  Plus,
+  History,
+  SlidersHorizontal,
+  Trash2,
   Archive,
   QrCode,
   CheckCircle,
@@ -21,6 +21,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import AssetTagChip from '../components/AssetTagChip';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
+import RippleButton from '../components/ui/RippleButton';
+import Pagination from '../components/ui/Pagination';
+
+const PAGE_SIZE = 20;
 
 const AssetDirectory = ({ user }) => {
   const [assets, setAssets] = useState([]);
@@ -32,6 +37,7 @@ const AssetDirectory = ({ user }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [page, setPage] = useState(1);
 
   // Register Modal state (We'll use a styled modal for registration)
   const [showRegModal, setShowRegModal] = useState(false);
@@ -122,19 +128,19 @@ const AssetDirectory = ({ user }) => {
 
   // Filter logic
   const filteredAssets = assets.filter(asset => {
-    const matchesSearch = 
+    const matchesSearch =
       asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.tag.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (asset.serial_number && asset.serial_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
       asset.location.toLowerCase().includes(searchQuery.toLowerCase());
-      
     const matchesCategory = filterCategory === 'All' ? true : asset.category_id === parseInt(filterCategory);
-    const matchesStatus = filterStatus === 'All' ? true : asset.status === filterStatus;
-    
+    const matchesStatus   = filterStatus   === 'All' ? true : asset.status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const allStatuses = ['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed'];
+  const allStatuses  = ['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed'];
+  const totalPages   = Math.ceil(filteredAssets.length / PAGE_SIZE);
+  const pagedAssets  = filteredAssets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 relative">
@@ -144,13 +150,10 @@ const AssetDirectory = ({ user }) => {
           <p className="text-sm text-gray-500">Search hardware listings, verify lifecycle statuses, and view audit history.</p>
         </div>
         {user?.role !== 'Employee' && (
-          <button 
-            onClick={() => setShowRegModal(true)}
-            className="btn btn-primary whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4 mr-2" />
+          <RippleButton variant="primary" size="md" onClick={() => setShowRegModal(true)}>
+            <Plus className="w-4 h-4" />
             Register New Asset
-          </button>
+          </RippleButton>
         )}
       </div>
 
@@ -250,9 +253,9 @@ const AssetDirectory = ({ user }) => {
                       </td>
                     </motion.tr>
                   ) : (
-                    filteredAssets.map(asset => (
-                      <motion.tr 
-                        key={asset.id} 
+                    pagedAssets.map(asset => (
+                      <motion.tr
+                        key={asset.id}
                         layout
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -289,6 +292,15 @@ const AssetDirectory = ({ user }) => {
             </table>
           </div>
         )}
+        {/* Pagination footer */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-line bg-surface/30">
+            <p className="text-xs text-gray-500">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredAssets.length)} of {filteredAssets.length} assets
+            </p>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
+        )}
       </div>
 
       {/* REGISTRATION MODAL */}
@@ -321,17 +333,15 @@ const AssetDirectory = ({ user }) => {
                   />
                 </div>
 
-                <div>
-                  <label className="label">Category</label>
-                  <select 
-                    required value={assetCategory} onChange={(e) => setAssetCategory(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                <div className="relative">
+                  <AnimatedSelect
+                    label="Category"
+                    required
+                    placeholder="Select category"
+                    options={categories.map(c => ({ value: String(c.id), label: c.name }))}
+                    value={assetCategory}
+                    onChange={setAssetCategory}
+                  />
                 </div>
 
                 <div>
@@ -361,18 +371,19 @@ const AssetDirectory = ({ user }) => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="label">Condition</label>
-                  <select 
-                    value={assetCondition} onChange={(e) => setAssetCondition(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="New">New</option>
-                    <option value="Good">Good</option>
-                    <option value="Fair">Fair</option>
-                    <option value="Poor">Poor</option>
-                    <option value="Damaged">Damaged</option>
-                  </select>
+                <div className="relative">
+                  <AnimatedSelect
+                    label="Condition"
+                    options={[
+                      { value: 'New',     label: 'New'     },
+                      { value: 'Good',    label: 'Good'    },
+                      { value: 'Fair',    label: 'Fair'    },
+                      { value: 'Poor',    label: 'Poor'    },
+                      { value: 'Damaged', label: 'Damaged' },
+                    ]}
+                    value={assetCondition}
+                    onChange={setAssetCondition}
+                  />
                 </div>
 
                 <div>
@@ -403,8 +414,8 @@ const AssetDirectory = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-5 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowRegModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Register Asset</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowRegModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Register Asset</RippleButton>
               </div>
             </motion.form>
           </div>

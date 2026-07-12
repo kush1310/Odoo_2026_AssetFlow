@@ -92,3 +92,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── RippleButton keyframe ── */
+@keyframes ripple {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1; }
+  80%  { transform: translate(-50%, -50%) scale(20);  opacity: 0.4; }
+  100% { transform: translate(-50%, -50%) scale(30);  opacity: 0; }
+}
+
+/* ── Login decorative float ── */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(12deg); }
+  50%       { transform: translateY(-12px) rotate(12deg); }
+}
+.animate-float-slow { animation: float-slow 5s ease-in-out infinite; }
+

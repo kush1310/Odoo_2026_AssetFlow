@@ -1,10 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { Key, Mail, ShieldAlert, Eye, EyeOff, Package } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Key, Mail, ShieldAlert, Eye, EyeOff, Package, Zap, Shield, BarChart2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import GravityStars from '../components/ui/GravityStars';
+import RippleButton from '../components/ui/RippleButton';
 import AssetTagChip from '../components/AssetTagChip';
 
+/**
+ * Login
+ *
+ * Entry authentication screen for AssetFlow.
+ * Features a full-screen GravityStars canvas background, a glassmorphism
+ * login card, and a right-side brand panel with floating decorative elements.
+ *
+ * @param  {Function} setUser - App-level auth state setter; called on successful login
+ * @returns {JSX.Element}
+ */
 const Login = ({ setUser }) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -13,154 +25,230 @@ const Login = ({ setUser }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * handleSubmit
+   *
+   * Submits credentials to POST /api/auth/login. On success, stores the
+   * JWT access token, refresh token, and user profile in localStorage,
+   * then lifts user state and navigates to the dashboard.
+   * On failure, displays the sanitized error from the server.
+   *
+   * @param  {React.FormEvent} e - Form submission event
+   * @validates email (RFC 5322 via type="email"), password (non-empty)
+   * @redirects /dashboard on success; shows inline error on failure
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', {
-        email,
-        password
-      });
+      const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('access_token', res.data.access_token);
       localStorage.setItem('refresh_token', res.data.refresh_token);
       localStorage.setItem('user', JSON.stringify({
         email: res.data.email,
-        name: res.data.name,
-        role: res.data.role,
-        id: res.data.id
+        name:  res.data.name,
+        role:  res.data.role,
+        id:    res.data.id,
       }));
-      setUser({
-        email: res.data.email,
-        name: res.data.name,
-        role: res.data.role,
-        id: res.data.id
-      });
+      setUser({ email: res.data.email, name: res.data.name, role: res.data.role, id: res.data.id });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || "Authentication failed. Please verify credentials.");
+      setError(err.response?.data?.detail || 'Authentication failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
+  const features = [
+    { icon: Package,   label: 'Asset Registry',     desc: 'Track every device, furniture, and vehicle' },
+    { icon: Shield,    label: 'Role-Based Access',   desc: 'Granular permissions per team member' },
+    { icon: BarChart2, label: 'Live Analytics',      desc: 'Real-time custody and utilization insights' },
+    { icon: Zap,       label: 'Instant Allocations', desc: 'One-click asset custody transfers' },
+  ];
+
   return (
-    <div className="min-h-screen bg-surface flex">
-      {/* Brand Panel (Left) */}
-      <div className="hidden lg:flex w-1/2 bg-brand p-12 flex-col justify-between relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 text-white mb-8">
-            <Package className="w-8 h-8" />
-            <span className="text-2xl font-bold tracking-tight font-sans">AssetFlow</span>
+    <div className="min-h-screen relative overflow-hidden bg-surface flex">
+
+      {/* ── Gravity Stars — full-screen background ── */}
+      <GravityStars starCount={120} starColor="#0F6E5F" className="z-0" />
+
+      {/* ── Left: Brand Panel ── */}
+      <div className="hidden lg:flex w-[52%] relative z-10 flex-col justify-between p-14">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-md">
+            <Package className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-            Enterprise Asset &<br />Resource Management
-          </h2>
-          <p className="text-brand-deep text-lg max-w-md">
-            Streamline allocations, track maintenance, and manage your organization's physical resources from a single unified platform.
-          </p>
-        </div>
-        
-        {/* Animated Background Elements */}
-        <div className="absolute top-1/4 right-10 flex flex-col gap-4 opacity-70 transform rotate-12">
-          <AssetTagChip tag="AF-0114" className="shadow-2xl scale-150" />
-          <AssetTagChip tag="AF-0062" className="shadow-2xl scale-125 translate-x-12" />
-          <AssetTagChip tag="AF-0897" className="shadow-2xl scale-110 -translate-x-8" />
+          <span className="text-2xl font-bold tracking-tight text-ink">AssetFlow</span>
         </div>
 
-        <div className="relative z-10 text-brand-deep text-sm font-medium">
-          © {new Date().getFullYear()} AssetFlow Systems Inc.
+        {/* Headline */}
+        <div className="flex flex-col gap-6">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="text-5xl font-bold text-ink leading-tight tracking-tight"
+          >
+            Enterprise Asset<br />
+            <span className="text-brand">Management,</span><br />
+            Simplified.
+          </motion.h1>
+
+          {/* Feature chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="grid grid-cols-2 gap-3"
+          >
+            {features.map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="flex items-start gap-3 p-3 bg-white/70 backdrop-blur-sm border border-line rounded-xl shadow-sm">
+                <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-brand" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-ink">{label}</p>
+                  <p className="text-[11px] text-gray-500 leading-tight">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Floating asset tags */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="flex gap-3 animate-float-slow"
+          >
+            <AssetTagChip tag="AF-0114" />
+            <AssetTagChip tag="AF-0062" />
+            <AssetTagChip tag="AF-0897" />
+          </motion.div>
         </div>
+
+        <p className="text-xs text-gray-400">© {new Date().getFullYear()} AssetFlow Systems Inc. All rights reserved.</p>
       </div>
 
-      {/* Form Panel (Right) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md bg-white border border-line rounded-2xl p-8 shadow-xl flex flex-col gap-6"
+      {/* ── Right: Login Form Card ── */}
+      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+          className="w-full max-w-md"
         >
-          <div className="flex flex-col gap-2 text-center lg:text-left">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">
-              Welcome back
-            </h1>
-            <p className="text-sm text-gray-500">Sign in to your account</p>
-          </div>
+          {/* Glass card */}
+          <div className="bg-white/85 backdrop-blur-xl border border-white/60 rounded-3xl p-8 shadow-2xl shadow-brand/5 flex flex-col gap-6">
 
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-50 border border-rust text-rust text-sm rounded-lg flex items-center gap-3"
-            >
-              <ShieldAlert className="w-5 h-5 shrink-0" />
-              <span>{error}</span>
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div>
-              <label className="label">Work Email</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                  <Mail className="w-4 h-4" />
-                </span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                  className="input-field pl-10"
-                />
+            {/* Mobile logo */}
+            <div className="lg:hidden flex items-center gap-2 justify-center">
+              <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
+                <Package className="w-4 h-4 text-white" />
               </div>
+              <span className="font-bold text-ink text-lg">AssetFlow</span>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="label !mb-0">Password</label>
-                <Link to="/forgot-password" className="text-xs text-brand hover:underline">Forgot password?</Link>
-              </div>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                  <Key className="w-4 h-4" />
-                </span>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-field pl-10 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-ink focus:outline-none"
+            <div className="flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-ink tracking-tight">Welcome back</h2>
+              <p className="text-sm text-gray-500">Sign in to your organization account</p>
+            </div>
+
+            {/* Error banner */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                  <div className="flex items-center gap-3 p-3.5 bg-red-50 border border-red-100 text-rust text-sm rounded-xl">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              {/* Email */}
+              <div>
+                <label className="label">Work Email</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="input-field pl-10 bg-white/80"
+                  />
+                </div>
               </div>
+
+              {/* Password */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="label !mb-0">Password</label>
+                  <Link to="/forgot-password" className="text-xs text-brand hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                    <Key className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="input-field pl-10 pr-10 bg-white/80"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-ink focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <RippleButton
+                type="submit"
+                variant="primary"
+                size="lg"
+                disabled={loading}
+                className="w-full mt-1"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Authenticating...
+                  </span>
+                ) : 'Sign In'}
+              </RippleButton>
+            </form>
+
+            <div className="text-center text-sm text-gray-500 pt-2 border-t border-line/60">
+              New here?{' '}
+              <Link to="/signup" className="text-brand font-semibold hover:underline">
+                Create an account
+              </Link>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary w-full py-2.5 mt-2 shadow-md shadow-brand/20"
-            >
-              {loading ? "Authenticating..." : "Sign In"}
-            </button>
-          </form>
-
-          <div className="text-center text-sm text-gray-500 pt-4 border-t border-line">
-            <span>New here? </span>
-            <Link to="/signup" className="text-brand hover:underline font-semibold">
-              Create an account
-            </Link>
           </div>
         </motion.div>
       </div>
+
     </div>
   );
 };

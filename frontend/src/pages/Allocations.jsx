@@ -17,6 +17,13 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import AssetTagChip from '../components/AssetTagChip';
+import { HandWrittenTitle } from '../components/ui/HandWrittenTitle';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
+import RippleButton from '../components/ui/RippleButton';
+import Pagination from '../components/ui/Pagination';
+
+const PAGE_SIZE_ALLOC = 10;
+const PAGE_SIZE_TRANS = 10;
 
 const Allocations = ({ user }) => {
   const [assets, setAssets] = useState([]);
@@ -43,6 +50,10 @@ const Allocations = ({ user }) => {
   const [showReturnModal, setShowReturnModal] = useState(null);
   const [returnCondition, setReturnCondition] = useState('Good');
   const [returnNotes, setReturnNotes] = useState('');
+  
+  // Pagination
+  const [allocPage, setAllocPage] = useState(1);
+  const [transPage, setTransPage] = useState(1);
 
   const loadData = async () => {
     try {
@@ -166,31 +177,36 @@ const Allocations = ({ user }) => {
   };
 
   const activeAllocations = allocations.filter(a => a.state === 'approved' || a.state === 'overdue');
+  const paginatedAllocs = activeAllocations.slice((allocPage - 1) * PAGE_SIZE_ALLOC, allocPage * PAGE_SIZE_ALLOC);
+  const totalAllocPages = Math.ceil(activeAllocations.length / PAGE_SIZE_ALLOC);
+
+  const paginatedTransfers = transfers.slice((transPage - 1) * PAGE_SIZE_TRANS, transPage * PAGE_SIZE_TRANS);
+  const totalTransPages = Math.ceil(transfers.length / PAGE_SIZE_TRANS);
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-line shadow-sm gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Custody & Allocations</h2>
-          <p className="text-sm text-gray-500">Track custody allocations, check in returned assets, or initiate peer-to-peer transfers.</p>
-        </div>
-        <div className="flex gap-3">
+      <div className="bg-white p-6 rounded-2xl border border-line shadow-sm">
+        <HandWrittenTitle 
+          title="Custody & Allocations" 
+          subtitle="Track custody allocations, check in returned assets, or initiate peer-to-peer transfers."
+        />
+        <div className="flex gap-3 justify-center mt-4">
           {user?.role !== 'Employee' && (
-            <button 
+            <RippleButton 
+              variant="primary"
               onClick={() => setShowAllocModal(true)}
-              className="btn btn-primary"
             >
-              <KeyRound className="w-4 h-4 mr-2" />
+              <KeyRound className="w-4 h-4" />
               Allocate Asset
-            </button>
+            </RippleButton>
           )}
-          <button 
+          <RippleButton 
+            variant="secondary"
             onClick={() => setShowTransferModal(true)}
-            className="btn btn-secondary"
           >
-            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            <ArrowLeftRight className="w-4 h-4" />
             Request Transfer
-          </button>
+          </RippleButton>
         </div>
       </div>
 
@@ -219,7 +235,7 @@ const Allocations = ({ user }) => {
                 </div>
               ) : (
                 <div className="divide-y divide-line">
-                  {activeAllocations.map(alloc => {
+                  {paginatedAllocs.map(alloc => {
                     const assetObj = assets.find(a => a.id === alloc.asset_id);
                     const empObj = employees.find(e => e.id === alloc.employee_id);
                     const isOverdue = alloc.state === 'overdue';
@@ -238,13 +254,13 @@ const Allocations = ({ user }) => {
                             </div>
                           </div>
                           {user?.role !== 'Employee' && (
-                            <button 
+                            <RippleButton 
+                              variant="secondary"
+                              size="sm"
                               onClick={() => setShowReturnModal(alloc)}
-                              className="btn btn-secondary px-3 py-1.5 text-xs opacity-0 group-hover:opacity-100 transition"
                             >
-                              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                              Return Check-in
-                            </button>
+                              Check In
+                            </RippleButton>
                           )}
                         </div>
 
@@ -285,6 +301,11 @@ const Allocations = ({ user }) => {
                 </div>
               )}
             </div>
+            {totalAllocPages > 1 && (
+              <div className="p-4 border-t border-line flex justify-center bg-surface/30">
+                <Pagination page={allocPage} totalPages={totalAllocPages} onPageChange={setAllocPage} />
+              </div>
+            )}
           </div>
 
           {/* CUSTODY TRANSFERS */}
@@ -302,65 +323,64 @@ const Allocations = ({ user }) => {
               {transfers.length === 0 ? (
                 <div className="p-8 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-2">
                   <ArrowLeftRight className="w-8 h-8 text-gray-300" />
-                  No transfer requests pending.
+                  No transfer requests raised yet.
                 </div>
               ) : (
                 <div className="divide-y divide-line">
-                  {transfers.map(trans => {
-                    const assetObj = assets.find(a => a.id === trans.asset_id);
-                    const fromObj = employees.find(e => e.id === trans.source_holder_id);
-                    const toObj = employees.find(e => e.id === trans.target_holder_id);
+                  {paginatedTransfers.map(transfer => {
+                    const assetObj = assets.find(a => a.id === transfer.asset_id);
+                    const sourceObj = employees.find(e => e.id === transfer.source_holder_id);
+                    const targetObj = employees.find(e => e.id === transfer.target_holder_id);
+                    
+                    const isPending = transfer.state === 'Requested';
+                    const canApprove = isPending && (user?.role === 'Admin' || user?.id === transfer.target_holder_id);
+
                     return (
-                      <div key={trans.id} className="p-5 flex flex-col gap-4 hover:bg-surface transition">
-                        <div className="flex justify-between items-start">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <AssetTagChip tag={assetObj?.tag || 'UNK'} />
-                              <span className="text-sm font-bold text-ink">{assetObj?.name}</span>
+                      <div key={transfer.id} className="p-5 flex flex-col gap-3 hover:bg-surface transition">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <span className="text-xs font-semibold text-brand tracking-wide">
+                              TRANSFER REQUEST
+                            </span>
+                            <h4 className="font-semibold text-ink text-sm truncate">{assetObj?.name || 'Asset'}</h4>
+                            <div className="flex items-center gap-1.5 flex-wrap text-xs text-gray-500">
+                              <span className="font-medium text-gray-700">{sourceObj?.name || 'Sender'}</span>
+                              <ChevronRight className="w-3 h-3 text-gray-400" />
+                              <span className="font-medium text-gray-700">{targetObj?.name || 'Recipient'}</span>
                             </div>
-                            
-                            <div className="flex items-center gap-3 mt-1 bg-white border border-line rounded-lg p-2.5 shadow-sm">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-500 font-semibold uppercase">From</span>
-                                <span className="text-xs font-medium text-ink">{fromObj?.name || 'Unknown'}</span>
-                              </div>
-                              <ArrowRight className="w-4 h-4 text-gray-300 mx-1" />
-                              <div className="flex flex-col">
-                                <span className="text-[10px] text-brand font-semibold uppercase">To Recipient</span>
-                                <span className="text-xs font-medium text-ink">{toObj?.name || 'Unknown'}</span>
-                              </div>
-                            </div>
-                            
-                            {trans.reason && (
-                              <p className="text-xs text-gray-600 bg-gray-50 border-l-2 border-gray-300 p-2 italic mt-1">
-                                "{trans.reason}"
-                              </p>
-                            )}
                           </div>
                           
-                          <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border
-                            ${trans.state === 'Requested' ? 'bg-amber/10 text-amber border-amber/20' : ''}
-                            ${trans.state === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                            ${trans.state === 'Rejected' ? 'bg-red-50 text-rust border-red-200' : ''}
+                          <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shrink-0
+                            ${transfer.state === 'Requested' ? 'bg-amber/10 text-amber border-amber/20' : ''}
+                            ${transfer.state === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                            ${transfer.state === 'Rejected' ? 'bg-red-50 text-rust border-red-200' : ''}
                           `}>
-                            {trans.state}
+                            {transfer.state}
                           </span>
                         </div>
 
-                        {trans.state === 'Requested' && user?.role !== 'Employee' && (
-                          <div className="flex justify-end gap-2 pt-3 border-t border-line mt-1">
-                            <button 
-                              onClick={() => processTransferAction(trans.id, 'reject')}
-                              className="btn btn-secondary text-rust border-red-200 hover:bg-red-50 px-3 py-1.5 text-xs"
+                        {transfer.reason && (
+                          <p className="text-xs text-gray-500 italic bg-surface/50 p-2.5 rounded-lg border border-line/50 leading-relaxed">
+                            "{transfer.reason}"
+                          </p>
+                        )}
+
+                        {canApprove && (
+                          <div className="flex gap-2 justify-end mt-1">
+                            <RippleButton 
+                              variant="danger" 
+                              size="sm"
+                              onClick={() => processTransferAction(transfer.id, 'reject')}
                             >
                               Reject
-                            </button>
-                            <button 
-                              onClick={() => processTransferAction(trans.id, 'approve')}
-                              className="btn bg-brand text-white hover:bg-brand-deep px-3 py-1.5 text-xs"
+                            </RippleButton>
+                            <RippleButton 
+                              variant="primary" 
+                              size="sm"
+                              onClick={() => processTransferAction(transfer.id, 'approve')}
                             >
                               Approve
-                            </button>
+                            </RippleButton>
                           </div>
                         )}
                       </div>
@@ -369,6 +389,11 @@ const Allocations = ({ user }) => {
                 </div>
               )}
             </div>
+            {totalTransPages > 1 && (
+              <div className="p-4 border-t border-line flex justify-center bg-surface/30">
+                <Pagination page={transPage} totalPages={totalTransPages} onPageChange={setTransPage} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -417,33 +442,27 @@ const Allocations = ({ user }) => {
                 )}
               </AnimatePresence>
 
-              <div>
-                <label className="label">Select Asset</label>
-                <select 
-                  required value={allocAsset} onChange={(e) => {setAllocAsset(e.target.value); setAllocConflict(null);}}
-                  className="input-field"
-                >
-                  <option value="">Search and select...</option>
-                  {assets.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.tag}) - {a.status}
-                    </option>
-                  ))}
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Select Asset"
+                   required
+                   placeholder="Search and select asset..."
+                   options={assets.map(a => ({ value: String(a.id), label: `${a.name} (${a.tag}) - ${a.status}` }))}
+                   value={allocAsset}
+                   onChange={(val) => { setAllocAsset(val); setAllocConflict(null); }}
+                 />
+               </div>
 
-              <div>
-                <label className="label">Select Custodian Employee</label>
-                <select 
-                  required value={allocEmployee} onChange={(e) => setAllocEmployee(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Select Employee</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Select Custodian Employee"
+                   required
+                   placeholder="Search and select employee..."
+                   options={employees.map(emp => ({ value: String(emp.id), label: emp.name }))}
+                   value={allocEmployee}
+                   onChange={setAllocEmployee}
+                 />
+               </div>
 
               <div>
                 <label className="label">Allocation Date</label>
@@ -461,22 +480,23 @@ const Allocations = ({ user }) => {
                 />
               </div>
 
-              <div>
-                <label className="label">Condition at Allocation</label>
-                <select 
-                  value={allocCondition} onChange={(e) => setAllocCondition(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="New">New</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                </select>
-              </div>
+               <div className="relative">
+                 <AnimatedSelect
+                   label="Condition at Allocation"
+                   options={[
+                     { value: 'New',  label: 'New' },
+                     { value: 'Good', label: 'Good' },
+                     { value: 'Fair', label: 'Fair' },
+                     { value: 'Poor', label: 'Poor' },
+                   ]}
+                   value={allocCondition}
+                   onChange={setAllocCondition}
+                 />
+               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowAllocModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={!!allocConflict}>Confirm Allocation</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowAllocModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary" disabled={!!allocConflict}>Confirm Allocation</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -504,30 +524,26 @@ const Allocations = ({ user }) => {
                 <button type="button" onClick={() => setShowTransferModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
               </div>
 
-              <div>
-                <label className="label">Select Allocated Asset</label>
-                <select 
-                  required value={transferAsset} onChange={(e) => setTransferAsset(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Select Asset</option>
-                  {assets.filter(a => a.status === 'Allocated').map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>
-                  ))}
-                </select>
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Allocated Asset"
+                  required
+                  placeholder="Select asset..."
+                  options={assets.filter(a => a.status === 'Allocated').map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
+                  value={transferAsset}
+                  onChange={setTransferAsset}
+                />
               </div>
 
-              <div>
-                <label className="label">Select Recipient Employee</label>
-                <select 
-                  required value={transferTarget} onChange={(e) => setTransferTarget(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Select Recipient</option>
-                  {employees.filter(e => e.id !== user?.id).map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Recipient Employee"
+                  required
+                  placeholder="Select recipient..."
+                  options={employees.filter(e => e.id !== user?.id).map(emp => ({ value: String(emp.id), label: emp.name }))}
+                  value={transferTarget}
+                  onChange={setTransferTarget}
+                />
               </div>
 
               <div>
@@ -540,8 +556,8 @@ const Allocations = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowTransferModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Submit Transfer</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Submit Transfer</RippleButton>
               </div>
             </motion.form>
           </div>
@@ -570,18 +586,19 @@ const Allocations = ({ user }) => {
               </div>
               <p className="text-sm text-gray-500 mb-2">Confirm returned asset details and record check-in notes.</p>
 
-              <div>
-                <label className="label">Condition at Return</label>
-                <select 
-                  value={returnCondition} onChange={(e) => setReturnCondition(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="New">New</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                  <option value="Damaged">Damaged</option>
-                </select>
+              <div className="relative">
+                <AnimatedSelect
+                  label="Condition at Return"
+                  options={[
+                    { value: 'New',     label: 'New' },
+                    { value: 'Good',    label: 'Good' },
+                    { value: 'Fair',    label: 'Fair' },
+                    { value: 'Poor',    label: 'Poor' },
+                    { value: 'Damaged', label: 'Damaged' },
+                  ]}
+                  value={returnCondition}
+                  onChange={setReturnCondition}
+                />
               </div>
 
               <div>
@@ -594,8 +611,8 @@ const Allocations = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <button type="button" onClick={() => setShowReturnModal(null)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Complete Return</button>
+                <RippleButton type="button" variant="secondary" onClick={() => setShowReturnModal(null)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Complete Return</RippleButton>
               </div>
             </motion.form>
           </div>
