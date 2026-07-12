@@ -28,7 +28,7 @@ def seed_database():
 
         # 2. Users
         users = [
-            models.User(name="System Admin", email=admin_email, password_hash=auth.get_password_hash("pass1111"), role="Admin", status="Active"),
+            models.User(name="System Admin", email="admin@assetflow.com", password_hash=auth.get_password_hash("pass1111"), role="Admin", status="Active"),
             models.User(name="Asset Manager", email="am@assetflow.com", password_hash=auth.get_password_hash("pass1111"), role="Asset Manager", status="Active"),
             models.User(name="Aditi Rao", email="aditi@assetflow.com", password_hash=auth.get_password_hash("pass1111"), role="Department Head", department_id=eng_dept.id, status="Active"),
             models.User(name="Rohan Mehta", email="rohan@assetflow.com", password_hash=auth.get_password_hash("pass1111"), role="Department Head", department_id=proc_dept.id, status="Active"),
