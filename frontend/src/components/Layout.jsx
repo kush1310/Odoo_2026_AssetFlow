@@ -17,9 +17,10 @@ import {
   X,
   Settings,
   BarChart2,
-  ChevronDown
 } from 'lucide-react';
 import { useToast } from './Toast';
+import NotificationStack from './ui/NotificationStack';
+import RippleButton from './ui/RippleButton';
 
 /**
  * NavLink
@@ -278,44 +279,23 @@ const Layout = ({ children, user, setUser }) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-80 bg-white border border-line rounded-xl shadow-xl z-50 overflow-hidden"
+                      className="absolute right-0 mt-2 w-80 bg-white border border-line rounded-2xl shadow-xl z-50 overflow-hidden"
                     >
-                      <div className="px-4 py-3 border-b border-line bg-surface flex items-center justify-between">
-                        <span className="text-sm font-semibold text-ink">
-                          Notifications
-                          {unreadCount > 0 && (
-                            <span className="ml-2 text-xs bg-brand/10 text-brand px-1.5 py-0.5 rounded-full font-medium">
-                              {unreadCount} new
-                            </span>
-                          )}
-                        </span>
-                        {unreadCount > 0 && (
-                          <button onClick={markAllRead} className="text-xs text-brand hover:underline font-medium">
-                            Mark all read
-                          </button>
-                        )}
+                      <div className="px-4 pt-4 pb-2 border-b border-line bg-surface flex items-center justify-between">
+                        <span className="text-sm font-semibold text-ink">Notifications</span>
+                        <button
+                          onClick={() => setShowNotifications(false)}
+                          className="text-gray-400 hover:text-ink transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <div className="max-h-72 overflow-y-auto divide-y divide-line">
-                        {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-sm text-gray-400">No new notifications.</div>
-                        ) : (
-                          notifications.map(notif => (
-                            <div
-                              key={notif.id}
-                              onClick={() => markAsRead(notif.id)}
-                              className={`px-4 py-3 cursor-pointer hover:bg-surface transition-colors flex flex-col gap-1
-                                ${!notif.read_status ? 'border-l-2 border-l-brand bg-brand/[0.03]' : ''}`}
-                            >
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{notif.type}</span>
-                              <p className={`text-xs leading-relaxed ${!notif.read_status ? 'font-medium text-ink' : 'text-gray-600'}`}>
-                                {notif.message}
-                              </p>
-                              <span className="text-[10px] text-gray-400">
-                                {new Date(notif.created_date).toLocaleString()}
-                              </span>
-                            </div>
-                          ))
-                        )}
+                      <div className="p-4">
+                        <NotificationStack
+                          notifications={notifications}
+                          onMarkRead={markAsRead}
+                          onMarkAllRead={markAllRead}
+                        />
                       </div>
                     </motion.div>
                   )}
@@ -334,14 +314,16 @@ const Layout = ({ children, user, setUser }) => {
               </div>
 
               {/* Logout */}
-              <button
+              <RippleButton
+                variant="ghost"
+                size="icon"
                 onClick={handleLogout}
-                className="p-2 rounded-full text-gray-400 hover:text-rust hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-rust"
                 title="Sign out"
                 aria-label="Sign out"
+                className="text-gray-400 hover:text-rust hover:bg-red-50"
               >
                 <LogOut className="w-4 h-4" />
-              </button>
+              </RippleButton>
             </div>
           </div>
 
