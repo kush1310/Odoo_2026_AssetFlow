@@ -104,6 +104,14 @@ def enrich_log(log: models.ActivityLog, db: Session) -> dict:
     return d
 
 
+def enrich_asset(asset: models.Asset) -> dict:
+    d = {c.name: getattr(asset, c.name) for c in asset.__table__.columns}
+    d["department_name"] = asset.department.name if asset.department else None
+    active_alloc = next((a for a in asset.allocations if a.state in ["approved", "overdue"]), None)
+    d["current_holder_id"] = active_alloc.employee_id if active_alloc else None
+    return d
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. AUTHENTICATION
 # ══════════════════════════════════════════════════════════════════════════════
@@ -348,20 +356,6 @@ def get_public_departments(db: Session = Depends(get_db)):
     return [{"id": d.id, "name": d.name, "code": d.code} for d in depts]
 
 
-@router.put("/auth/profile", response_model=schemas.UserResponse)
-def update_profile(
-    profile_in: schemas.UserProfileUpdate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    current_user.name = profile_in.name
-    db.commit()
-    db.refresh(current_user)
-    log_activity(db, current_user.id, "UPDATE_PROFILE", "users", current_user.id,
-                 f"User updated profile name to {profile_in.name}")
-    return current_user
-
-
 @router.put("/auth/change-password")
 def change_password(
     req: schemas.ChangePasswordRequest,
@@ -542,14 +536,14 @@ def register_asset(asset_in: schemas.AssetCreate, db: Session = Depends(get_db),
         serial_number=asset_in.serial_number, acquisition_date=asset_in.acquisition_date,
         acquisition_cost=asset_in.acquisition_cost, condition=asset_in.condition,
         location=asset_in.location, shared_flag=asset_in.shared_flag,
-        status="Available"
+        status="Available", image=asset_in.image, department_id=asset_in.department_id
     )
     db.add(asset)
     db.commit()
     db.refresh(asset)
     log_activity(db, current_user.id, "REGISTER_ASSET", "assets", asset.id,
                  f"Registered {asset.name} ({tag})")
-    return asset
+    return enrich_asset(asset)
 
 
 @router.get("/assets")
@@ -570,7 +564,10 @@ def get_assets(
             models.Allocation.state.in_(["approved", "overdue"])
         ).scalar_subquery()
         query = query.filter(
-            or_(models.Asset.id.in_(allocated_ids), models.Asset.shared_flag == True)
+            or_(
+                models.Asset.id.in_(allocated_ids),
+                and_(models.Asset.shared_flag == True, models.Asset.department_id == current_user.department_id)
+            )
         )
     elif current_user.role == "Department Head":
         allocated_ids = db.query(models.Allocation.asset_id).filter(
@@ -581,7 +578,10 @@ def get_assets(
             models.Allocation.state.in_(["approved", "overdue"])
         ).scalar_subquery()
         query = query.filter(
-            or_(models.Asset.id.in_(allocated_ids), models.Asset.shared_flag == True)
+            or_(
+                models.Asset.id.in_(allocated_ids),
+                and_(models.Asset.shared_flag == True, models.Asset.department_id == current_user.department_id)
+            )
         )
 
     # Filters
@@ -600,7 +600,7 @@ def get_assets(
     if location:
         query = query.filter(models.Asset.location.ilike(f"%{location}%"))
 
-    return query.all()
+    return [enrich_asset(a) for a in query.all()]
 
 
 @router.get("/assets/{asset_id}")
@@ -612,7 +612,7 @@ def get_asset_by_id(asset_id: int, db: Session = Depends(get_db),
     # Build detail response
     alloc_history = [enrich_allocation(a) for a in asset.allocations]
     maint_history = [enrich_maintenance(m) for m in asset.maintenance_records]
-    result = {c.name: getattr(asset, c.name) for c in asset.__table__.columns}
+    result = enrich_asset(asset)
     result["allocation_history"] = alloc_history
     result["maintenance_history"] = maint_history
     return result
@@ -642,7 +642,7 @@ def update_asset(asset_id: int, asset_in: schemas.AssetUpdate,
     db.refresh(asset)
     log_activity(db, current_user.id, "UPDATE_ASSET", "assets", asset.id,
                  f"Updated asset {asset.tag}")
-    return asset
+    return enrich_asset(asset)
 
 
 @router.post("/assets/{asset_id}/sell", response_model=schemas.AssetResponse)
@@ -904,6 +904,8 @@ def create_booking(book_in: schemas.BookingCreate, db: Session = Depends(get_db)
         raise HTTPException(404, "Asset not found.")
     if not asset.shared_flag:
         raise HTTPException(400, "This asset is not a shared bookable resource.")
+    if current_user.role in ["Employee", "Department Head"] and asset.department_id != current_user.department_id:
+        raise HTTPException(403, "You can only book shared resources belonging to your department.")
     if book_in.end_time <= book_in.start_time:
         raise HTTPException(400, "End time must be after start time.")
 
@@ -953,8 +955,12 @@ def get_bookings(
     if current_user.role in ["Admin", "Asset Manager"]:
         query = db.query(models.Booking)
     else:
-        query = db.query(models.Booking).filter(
-            models.Booking.booked_by_id == current_user.id)
+        query = db.query(models.Booking).join(models.Asset).filter(
+            or_(
+                models.Booking.booked_by_id == current_user.id,
+                and_(models.Asset.shared_flag == True, models.Asset.department_id == current_user.department_id)
+            )
+        )
     if asset_id:
         query = query.filter(models.Booking.asset_id == asset_id)
     return [enrich_booking(b) for b in query.order_by(models.Booking.start_time.desc()).all()]
@@ -1009,6 +1015,7 @@ def raise_maintenance(req_in: schemas.MaintenanceCreate, db: Session = Depends(g
     req = models.MaintenanceRequest(
         asset_id=req_in.asset_id, raised_by_id=current_user.id,
         issue_description=req_in.issue_description, priority=req_in.priority,
+        photo=req_in.photo,
         status="Pending"
     )
     db.add(req)
@@ -1763,3 +1770,346 @@ def run_scheduled_jobs(db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Scheduled jobs executed.", "results": results}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 12. NEW CUSTOM FEATURES (UPLOADS, CUSTODY REQUESTS, RESOURCE REQUESTS)
+# ══════════════════════════════════════════════════════════════════════════════
+
+import uuid
+import shutil
+import os
+from fastapi import UploadFile, File
+
+@router.post("/upload")
+def upload_file(file: UploadFile = File(...)):
+    ext = file.filename.split(".")[-1]
+    unique_filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join("uploads", unique_filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"url": f"/uploads/{unique_filename}"}
+
+
+@router.post("/allocations/request", response_model=schemas.AllocationResponse)
+def request_custody(
+    alloc_in: schemas.AllocationRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    asset = db.query(models.Asset).filter(models.Asset.id == alloc_in.asset_id).first()
+    if not asset:
+        raise HTTPException(404, "Asset not found.")
+    
+    if asset.status != "Available":
+        raise HTTPException(400, "Asset is not available for custody request.")
+        
+    alloc = models.Allocation(
+        asset_id=alloc_in.asset_id,
+        employee_id=current_user.id,
+        department_id=current_user.department_id,
+        allocation_date=alloc_in.allocation_date,
+        expected_return_date=alloc_in.expected_return_date,
+        state="Requested",
+        condition_at_allocation=asset.condition,
+        checkin_notes=alloc_in.reason
+    )
+    db.add(alloc)
+    db.commit()
+    db.refresh(alloc)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "REQUEST_CUSTODY",
+        "allocations",
+        alloc.id,
+        f"Requested custody of {asset.tag} ({asset.name})"
+    )
+    
+    managers = db.query(models.User).filter(models.User.role.in_(["Admin", "Asset Manager"])).all()
+    for mgr in managers:
+        notify_user(
+            db,
+            mgr.id,
+            "CUSTODY_REQUEST",
+            f"Custody request from {current_user.name} for asset {asset.tag}.",
+            f"allocations:{alloc.id}"
+        )
+        
+    return alloc
+
+
+@router.post("/allocations/{alloc_id}/approve", response_model=schemas.AllocationResponse)
+def approve_custody(
+    alloc_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Asset Manager"]))
+):
+    alloc = db.query(models.Allocation).filter(models.Allocation.id == alloc_id).first()
+    if not alloc:
+        raise HTTPException(404, "Custody request not found.")
+        
+    if alloc.state != "Requested":
+        raise HTTPException(400, "Allocation request is not in a pending state.")
+        
+    asset = alloc.asset
+    if asset.status != "Available":
+        raise HTTPException(400, "Asset is no longer available.")
+        
+    alloc.state = "approved"
+    asset.status = "Allocated"
+    db.commit()
+    db.refresh(alloc)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "APPROVE_CUSTODY",
+        "allocations",
+        alloc.id,
+        f"Approved custody request for {asset.tag} to user {alloc.employee_id}"
+    )
+    
+    notify_user(
+        db,
+        alloc.employee_id,
+        "CUSTODY_APPROVED",
+        f"Your custody request for {asset.tag} has been APPROVED.",
+        f"allocations:{alloc.id}"
+    )
+    
+    return alloc
+
+
+@router.post("/allocations/{alloc_id}/reject", response_model=schemas.AllocationResponse)
+def reject_custody(
+    alloc_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Asset Manager"]))
+):
+    alloc = db.query(models.Allocation).filter(models.Allocation.id == alloc_id).first()
+    if not alloc:
+        raise HTTPException(404, "Custody request not found.")
+        
+    if alloc.state != "Requested":
+        raise HTTPException(400, "Allocation request is not in a pending state.")
+        
+    alloc.state = "rejected"
+    db.commit()
+    db.refresh(alloc)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "REJECT_CUSTODY",
+        "allocations",
+        alloc.id,
+        f"Rejected custody request for {alloc.asset.tag} to user {alloc.employee_id}"
+    )
+    
+    notify_user(
+        db,
+        alloc.employee_id,
+        "CUSTODY_REJECTED",
+        f"Your custody request for {alloc.asset.tag} has been REJECTED.",
+        f"allocations:{alloc.id}"
+    )
+    
+    return alloc
+
+
+def enrich_resource_request(req: models.ResourceRequest) -> dict:
+    d = {c.name: getattr(req, c.name) for c in req.__table__.columns}
+    d["requester_name"] = req.requester.name if req.requester else None
+    d["requester_dept_name"] = req.requester.department.name if (req.requester and req.requester.department) else None
+    return d
+
+
+@router.post("/resource-requests", response_model=schemas.ResourceRequestResponse)
+def create_resource_request(
+    req_in: schemas.ResourceRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    req = models.ResourceRequest(
+        requester_id=current_user.id,
+        name=req_in.name,
+        reason=req_in.reason,
+        benefits=req_in.benefits,
+        estimated_cost=req_in.estimated_cost,
+        location_to_use=req_in.location_to_use,
+        image=req_in.image,
+        status="Pending"
+    )
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "CREATE_RESOURCE_REQUEST",
+        "resource_requests",
+        req.id,
+        f"Created resource request for {req.name}"
+    )
+    
+    managers = db.query(models.User).filter(models.User.role.in_(["Admin", "Asset Manager"])).all()
+    for mgr in managers:
+        notify_user(
+            db,
+            mgr.id,
+            "RESOURCE_REQUEST_PENDING",
+            f"New resource request '{req.name}' raised by {current_user.name}.",
+            f"resource_requests:{req.id}"
+        )
+        
+    return enrich_resource_request(req)
+
+
+@router.get("/resource-requests")
+def get_resource_requests(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role in ["Admin", "Asset Manager"]:
+        reqs = db.query(models.ResourceRequest).all()
+    elif current_user.role == "Department Head":
+        reqs = db.query(models.ResourceRequest).join(
+            models.User, models.ResourceRequest.requester_id == models.User.id
+        ).filter(models.User.department_id == current_user.department_id).all()
+    else:
+        reqs = db.query(models.ResourceRequest).filter(
+            models.ResourceRequest.requester_id == current_user.id
+        ).all()
+        
+    return [enrich_resource_request(r) for r in reqs]
+
+
+@router.post("/resource-requests/{request_id}/accept", response_model=schemas.ResourceRequestResponse)
+def accept_resource_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Asset Manager"]))
+):
+    req = db.query(models.ResourceRequest).filter(models.ResourceRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(404, "Resource request not found.")
+        
+    if req.status != "Pending":
+        raise HTTPException(400, f"Cannot accept resource request with status: {req.status}")
+        
+    req.status = "Accepted"
+    req.dept_head_approved = False
+    req.admin_approved = False
+    db.commit()
+    db.refresh(req)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "ACCEPT_RESOURCE_REQUEST",
+        "resource_requests",
+        req.id,
+        f"Asset manager accepted resource request '{req.name}'"
+    )
+    
+    dept = req.requester.department
+    if dept and dept.manager_id:
+        notify_user(
+            db,
+            dept.manager_id,
+            "RESOURCE_REQUEST_AWAITING_APPROVAL",
+            f"Resource request '{req.name}' accepted by manager. Awaiting your approval.",
+            f"resource_requests:{req.id}"
+        )
+    admins = db.query(models.User).filter(models.User.role == "Admin").all()
+    for adm in admins:
+        if adm.id != current_user.id:
+            notify_user(
+                db,
+                adm.id,
+                "RESOURCE_REQUEST_AWAITING_APPROVAL",
+                f"Resource request '{req.name}' accepted by manager. Awaiting Admin approval.",
+                f"resource_requests:{req.id}"
+            )
+            
+    return enrich_resource_request(req)
+
+
+@router.post("/resource-requests/{request_id}/reject", response_model=schemas.ResourceRequestResponse)
+def reject_resource_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Asset Manager", "Department Head"]))
+):
+    req = db.query(models.ResourceRequest).filter(models.ResourceRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(404, "Resource request not found.")
+        
+    if current_user.role == "Department Head":
+        if req.requester.department_id != current_user.department_id:
+            raise HTTPException(403, "You can only reject resource requests within your department.")
+            
+    req.status = "Rejected"
+    db.commit()
+    db.refresh(req)
+    
+    log_activity(
+        db,
+        current_user.id,
+        "REJECT_RESOURCE_REQUEST",
+        "resource_requests",
+        req.id,
+        f"Rejected resource request '{req.name}'"
+    )
+    
+    notify_user(
+        db,
+        req.requester_id,
+        "RESOURCE_REQUEST_REJECTED",
+        f"Your resource request for '{req.name}' has been REJECTED.",
+        f"resource_requests:{req.id}"
+    )
+    
+    return enrich_resource_request(req)
+
+
+@router.post("/resource-requests/{request_id}/approve", response_model=schemas.ResourceRequestResponse)
+def approve_resource_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Department Head"]))
+):
+    req = db.query(models.ResourceRequest).filter(models.ResourceRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(404, "Resource request not found.")
+        
+    if req.status != "Accepted":
+        raise HTTPException(400, "Request must be accepted by the Asset Manager before final approval.")
+        
+    if current_user.role == "Department Head":
+        if req.requester.department_id != current_user.department_id:
+            raise HTTPException(403, "You can only approve resource requests within your department.")
+        req.dept_head_approved = True
+        log_activity(db, current_user.id, "APPROVE_RESOURCE_DEPT_HEAD", "resource_requests", req.id, "Approved by Department Head")
+        
+    if current_user.role == "Admin":
+        req.admin_approved = True
+        log_activity(db, current_user.id, "APPROVE_RESOURCE_ADMIN", "resource_requests", req.id, "Approved by Admin")
+        
+    if req.dept_head_approved and req.admin_approved:
+        req.status = "Approved"
+        notify_user(
+            db,
+            req.requester_id,
+            "RESOURCE_REQUEST_APPROVED",
+            f"Congratulations! Your resource request for '{req.name}' is fully APPROVED.",
+            f"resource_requests:{req.id}"
+        )
+        
+    db.commit()
+    db.refresh(req)
+    return enrich_resource_request(req)
+

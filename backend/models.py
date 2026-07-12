@@ -16,6 +16,7 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime, nullable=True)
     token_version = Column(Integer, default=1, nullable=False)
+    profile_picture = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # User Profile Details
@@ -74,9 +75,12 @@ class Asset(Base):
     location = Column(String, nullable=False)
     shared_flag = Column(Boolean, default=False, nullable=False)
     qr_code = Column(String, nullable=True)
+    image = Column(String, nullable=True)
     status = Column(String, default="Available", nullable=False) # Available, Allocated, Reserved, Under Maintenance, Lost, Retired, Disposed
+    department_id = Column(Integer, ForeignKey('departments.id', ondelete='SET NULL'), nullable=True)
 
     category = relationship("AssetCategory", back_populates="assets")
+    department = relationship("Department")
     allocations = relationship("Allocation", back_populates="asset")
     bookings = relationship("Booking", back_populates="asset")
     maintenance_records = relationship("MaintenanceRequest", back_populates="asset")
@@ -226,3 +230,22 @@ class ActivityLog(Base):
     description = Column(String, nullable=True)
 
     user = relationship("User", back_populates="logs")
+
+
+class ResourceRequest(Base):
+    __tablename__ = 'resource_requests'
+
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    name = Column(String, nullable=False)
+    reason = Column(String, nullable=False)
+    benefits = Column(String, nullable=False)
+    estimated_cost = Column(Float, nullable=False)
+    location_to_use = Column(String, nullable=False)
+    image = Column(String, nullable=True)
+    status = Column(String, default="Pending", nullable=False) # Pending, Accepted, Approved, Rejected
+    dept_head_approved = Column(Boolean, default=False, nullable=False)
+    admin_approved = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    requester = relationship("User", foreign_keys=[requester_id])

@@ -48,6 +48,7 @@ class UserResponse(BaseModel):
     role: str
     department_id: Optional[int] = None
     status: str
+    profile_picture: Optional[str] = None
     created_at: datetime
     phone: Optional[str] = None
     gender: Optional[str] = None
@@ -73,6 +74,7 @@ class UserMinimal(BaseModel):
     email: str
     role: str
     department_id: Optional[int] = None
+    profile_picture: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -143,6 +145,8 @@ class AssetCreate(BaseModel):
     condition: str = "New"
     location: str
     shared_flag: bool = False
+    image: Optional[str] = None
+    department_id: Optional[int] = None
 
 class AssetUpdate(BaseModel):
     # NOTE: status is intentionally omitted — it is only changed by service functions
@@ -152,6 +156,8 @@ class AssetUpdate(BaseModel):
     condition: Optional[str] = None
     location: Optional[str] = None
     shared_flag: Optional[bool] = None
+    image: Optional[str] = None
+    department_id: Optional[int] = None
 
 class AssetResponse(BaseModel):
     id: int
@@ -165,7 +171,10 @@ class AssetResponse(BaseModel):
     location: str
     shared_flag: bool
     status: str
+    image: Optional[str] = None
     current_holder_id: Optional[int] = None
+    department_id: Optional[int] = None
+    department_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -182,6 +191,9 @@ class AssetDetailResponse(BaseModel):
     location: str
     shared_flag: bool
     status: str
+    image: Optional[str] = None
+    department_id: Optional[int] = None
+    department_name: Optional[str] = None
     allocation_history: List[Any] = []
     maintenance_history: List[Any] = []
 
@@ -198,6 +210,13 @@ class AllocationCreate(BaseModel):
     allocation_date: date
     expected_return_date: Optional[date] = None
     condition_at_allocation: str
+
+
+class AllocationRequestCreate(BaseModel):
+    asset_id: int
+    allocation_date: date
+    expected_return_date: Optional[date] = None
+    reason: str
 
 class ReturnCheckin(BaseModel):
     condition_at_return: str
@@ -287,6 +306,7 @@ class MaintenanceCreate(BaseModel):
     asset_id: int
     issue_description: str
     priority: str = "Low"  # Low | Medium | High | Critical
+    photo: Optional[str] = None
 
 class MaintenanceAssign(BaseModel):
     technician_id: int
@@ -425,6 +445,7 @@ class ActivityLogResponse(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     name: str = Field(..., min_length=2)
+    profile_picture: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -435,4 +456,33 @@ class AssetSellRequest(BaseModel):
     sell_price: float = Field(..., ge=0.0)
     buyer: str
     notes: Optional[str] = None
+
+
+class ResourceRequestCreate(BaseModel):
+    name: str
+    reason: str
+    benefits: str
+    estimated_cost: float = Field(..., ge=0.0)
+    location_to_use: str
+    image: Optional[str] = None
+
+
+class ResourceRequestResponse(BaseModel):
+    id: int
+    requester_id: int
+    requester_name: Optional[str] = None
+    requester_dept_name: Optional[str] = None
+    name: str
+    reason: str
+    benefits: str
+    estimated_cost: float
+    location_to_use: str
+    image: Optional[str] = None
+    status: str
+    dept_head_approved: bool
+    admin_approved: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 

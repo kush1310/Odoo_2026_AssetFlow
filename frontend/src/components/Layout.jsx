@@ -20,7 +20,12 @@ import {
   ClipboardCheck,
   Activity,
   KeyRound,
-  Bell
+  Bell,
+  FileText,
+  Moon,
+  Sun,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { useTheme } from '../contexts/ThemeContext';
@@ -117,8 +122,7 @@ const Layout = ({ children, user, setUser }) => {
 
   const unreadCount = notifications.filter(n => !n.read_status).length;
   
-  // Find current page title for breadcrumb
-  const currentNav = allowedItems.find(item => item.path === location.pathname);
+
 
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans text-ink">
@@ -163,67 +167,63 @@ const Layout = ({ children, user, setUser }) => {
             </Link>
 
             {/* Asset Directory Link */}
-            {user?.role === 'Admin' && (
-              <Link
-                to="/assets"
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
-                  ${location.pathname === '/assets' 
-                    ? 'bg-gray-50 text-gray-900' 
-                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
-                  }`}
-              >
-                <FolderOpen className="w-5 h-5 shrink-0" />
-                <span>Asset Directory</span>
-              </Link>
-            )}
+            <Link
+              to="/assets"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/assets' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <FolderOpen className="w-5 h-5 shrink-0" />
+              <span>Asset Directory</span>
+            </Link>
 
             {/* Custody Allocations Link */}
-            {user?.role === 'Admin' && (
-              <Link
-                to="/allocations"
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
-                  ${location.pathname === '/allocations' 
-                    ? 'bg-gray-50 text-gray-900' 
-                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
-                  }`}
-              >
-                <KeyRound className="w-5 h-5 shrink-0" />
-                <span>Custody Allocations</span>
-              </Link>
-            )}
+            <Link
+              to="/allocations"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/allocations' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <KeyRound className="w-5 h-5 shrink-0" />
+              <span>Custody Allocations</span>
+            </Link>
 
-            {user?.role === 'Admin' && <hr className="my-2 border-gray-200" />}
+            <hr className="my-2 border-gray-200" />
 
             {/* Operations Dropdown */}
-            {user?.role === 'Admin' && (
-              <div>
-                <button
-                  onClick={() => setFoldersOpen(!foldersOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50/50 hover:text-gray-900 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <Folder className="w-5 h-5 shrink-0" />
-                    <span>Asset Operations</span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${foldersOpen ? 'transform rotate-180' : ''}`} />
-                </button>
+            <div>
+              <button
+                onClick={() => setFoldersOpen(!foldersOpen)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50/50 hover:text-gray-900 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Folder className="w-5 h-5 shrink-0" />
+                  <span>Asset Operations</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${foldersOpen ? 'transform rotate-180' : ''}`} />
+              </button>
 
-                <AnimatePresence initial={false}>
-                  {foldersOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden flex flex-col pl-6 mt-1 gap-1 border-l border-gray-100 ml-5"
+              <AnimatePresence initial={false}>
+                {foldersOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden flex flex-col pl-6 mt-1 gap-1 border-l border-gray-100 ml-5"
+                  >
+                    <Link
+                      to="/bookings"
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
+                        ${location.pathname === '/bookings' ? 'text-brand font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                     >
-                      <Link
-                        to="/bookings"
-                        className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
-                          ${location.pathname === '/bookings' ? 'text-brand font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                      >
-                        Resource Bookings
-                      </Link>
+                      Resource Bookings
+                    </Link>
+                    {['Admin', 'Asset Manager', 'Department Head'].includes(user?.role) && (
                       <Link
                         to="/audits"
                         className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
@@ -231,6 +231,8 @@ const Layout = ({ children, user, setUser }) => {
                       >
                         Physical Audits
                       </Link>
+                    )}
+                    {user?.role === 'Admin' && (
                       <Link
                         to="/logs"
                         className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
@@ -238,16 +240,16 @@ const Layout = ({ children, user, setUser }) => {
                       >
                         System Logs
                       </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-            {user?.role === 'Admin' && <hr className="my-2 border-gray-200" />}
+            <hr className="my-2 border-gray-200" />
 
             {/* Reports & Analytics Link */}
-            {user?.role === 'Admin' && (
+            {['Admin', 'Asset Manager', 'Department Head'].includes(user?.role) && (
               <Link
                 to="/reports"
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
@@ -276,23 +278,34 @@ const Layout = ({ children, user, setUser }) => {
               </Link>
             )}
 
+            {/* Resource Requests Link */}
+            <Link
+              to="/resource-requests"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/resource-requests' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <FileText className="w-5 h-5 shrink-0" />
+              <span>Resource Requests</span>
+            </Link>
+
             {/* Maintenance Kanban Link */}
-            {user?.role === 'Admin' && (
-              <Link
-                to="/maintenance"
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
-                  ${location.pathname === '/maintenance' 
-                    ? 'bg-gray-50 text-gray-900' 
-                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Activity className="w-5 h-5 shrink-0" />
-                  <span>Maintenance Kanban</span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
-              </Link>
-            )}
+            <Link
+              to="/maintenance"
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/maintenance' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <Activity className="w-5 h-5 shrink-0" />
+                <span>Maintenance Kanban</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+            </Link>
 
             {/* Profile Settings Link */}
             <Link
@@ -431,8 +444,12 @@ const Layout = ({ children, user, setUser }) => {
                 <span className="text-sm font-semibold text-ink leading-tight group-hover:text-brand transition-colors">{user?.name}</span>
                 <span className="text-xs font-medium tracking-wide text-brand">{user?.role}</span>
               </div>
-              <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20 group-hover:ring-brand transition-all">
-                {user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />}
+              <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20 group-hover:ring-brand transition-all overflow-hidden">
+                {user?.profile_picture ? (
+                  <img src={`http://127.0.0.1:8000${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />
+                )}
               </div>
             </Link>
             <button 
@@ -494,16 +511,17 @@ const Layout = ({ children, user, setUser }) => {
                   <nav className="grid grid-cols-2 gap-2">
                     {[
                       { name: 'Dashboard', path: '/', icon: Home, visible: true },
-                      { name: 'Asset Directory', path: '/assets', icon: FolderOpen, visible: user?.role === 'Admin' },
-                      { name: 'Custody Allocations', path: '/allocations', icon: KeyRound, visible: user?.role === 'Admin' },
-                      { name: 'Resource Bookings', path: '/bookings', icon: ClipboardCheck, visible: user?.role === 'Admin' },
-                      { name: 'Physical Audits', path: '/audits', icon: ClipboardCheck, visible: user?.role === 'Admin' },
+                      { name: 'Asset Directory', path: '/assets', icon: FolderOpen, visible: true },
+                      { name: 'Custody Allocations', path: '/allocations', icon: KeyRound, visible: true },
+                      { name: 'Resource Bookings', path: '/bookings', icon: ClipboardCheck, visible: true },
+                      { name: 'Physical Audits', path: '/audits', icon: ClipboardCheck, visible: ['Admin', 'Asset Manager', 'Department Head'].includes(user?.role) },
                       { name: 'System Logs', path: '/logs', icon: Activity, visible: user?.role === 'Admin' },
-                      { name: 'Reports & Analytics', path: '/reports', icon: BarChart2, visible: user?.role === 'Admin' },
+                      { name: 'Reports & Analytics', path: '/reports', icon: BarChart2, visible: ['Admin', 'Asset Manager', 'Department Head'].includes(user?.role) },
                       { name: 'Org Setup', path: '/org-setup', icon: Settings, visible: user?.role === 'Admin' },
+                      { name: 'Resource Requests', path: '/resource-requests', icon: FileText, visible: true },
                       { name: 'Profile Settings', path: '/profile', icon: UserIcon, visible: true },
                       { name: 'Help & Support', path: '/help', icon: HelpCircle, visible: true },
-                      { name: 'Maintenance Kanban', path: '/maintenance', icon: ExternalLink, visible: user?.role === 'Admin' }
+                      { name: 'Maintenance Kanban', path: '/maintenance', icon: ExternalLink, visible: true }
                     ].filter(item => item.visible).map(item => {
                       const Icon = item.icon;
                       const isActive = location.pathname === item.path;
