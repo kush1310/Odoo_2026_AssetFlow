@@ -65,13 +65,14 @@ def seed_database():
         # 4. Assets
         today = datetime.date.today()
         assets = [
-            models.Asset(tag="AF-0114", name="Dell Laptop", category_id=elec.id, serial_number="DL1234", acquisition_date=today - datetime.timedelta(days=300), acquisition_cost=1200.0, condition="Good", location="HQ Floor 2", status="Allocated"),
-            models.Asset(tag="AF-0062", name="Projector", category_id=av.id, serial_number="PJ987", acquisition_date=today - datetime.timedelta(days=600), acquisition_cost=800.0, condition="Good", location="Room B2", status="Available", shared_flag=True),
-            models.Asset(tag="AF-0003", name="AC Unit", category_id=elec.id, serial_number="AC555", acquisition_date=today - datetime.timedelta(days=900), acquisition_cost=500.0, condition="Fair", location="Room C1", status="Under Maintenance"),
-            models.Asset(tag="AF-0078", name="Forklift", category_id=cats[2].id, serial_number="FL999", acquisition_date=today - datetime.timedelta(days=1200), acquisition_cost=15000.0, condition="Good", location="Warehouse", status="Under Maintenance"),
-            models.Asset(tag="AF-0897", name="Printer", category_id=elec.id, serial_number="PR111", acquisition_date=today - datetime.timedelta(days=150), acquisition_cost=300.0, condition="Poor", location="HQ Floor 1", status="Under Maintenance"),
-            models.Asset(tag="AF-0873", name="Chair", category_id=cats[1].id, serial_number="CH333", acquisition_date=today - datetime.timedelta(days=150), acquisition_cost=100.0, condition="Good", location="HQ Floor 2", status="Available"),
-            models.Asset(tag="AF-0021", name="Office Chair", category_id=cats[1].id, acquisition_date=today - datetime.timedelta(days=400), acquisition_cost=150.0, condition="Good", location="HQ Floor 2", status="Allocated"),
+            models.Asset(tag="AF-0114", name="Dell Laptop", category_id=elec.id, serial_number="DL1234", acquisition_date=today - datetime.timedelta(days=300), acquisition_cost=1200.0, condition="Good", location="HQ Floor 2", status="Allocated", department_id=eng_dept.id),
+            models.Asset(tag="AF-0062", name="Projector", category_id=av.id, serial_number="PJ987", acquisition_date=today - datetime.timedelta(days=600), acquisition_cost=800.0, condition="Good", location="Room B2", status="Available", shared_flag=True, department_id=eng_dept.id),
+            models.Asset(tag="AF-0003", name="AC Unit", category_id=elec.id, serial_number="AC555", acquisition_date=today - datetime.timedelta(days=900), acquisition_cost=500.0, condition="Fair", location="Room C1", status="Under Maintenance", department_id=eng_dept.id),
+            models.Asset(tag="AF-0078", name="Forklift", category_id=cats[2].id, serial_number="FL999", acquisition_date=today - datetime.timedelta(days=1200), acquisition_cost=15000.0, condition="Good", location="Warehouse", status="Under Maintenance", department_id=proc_dept.id),
+            models.Asset(tag="AF-0897", name="Printer", category_id=elec.id, serial_number="PR111", acquisition_date=today - datetime.timedelta(days=150), acquisition_cost=300.0, condition="Poor", location="HQ Floor 1", status="Under Maintenance", department_id=hr_dept.id),
+            models.Asset(tag="AF-0873", name="Chair", category_id=cats[1].id, serial_number="CH333", acquisition_date=today - datetime.timedelta(days=150), acquisition_cost=100.0, condition="Good", location="HQ Floor 2", status="Available", department_id=hr_dept.id),
+            models.Asset(tag="AF-0021", name="Office Chair", category_id=cats[1].id, acquisition_date=today - datetime.timedelta(days=400), acquisition_cost=150.0, condition="Good", location="HQ Floor 2", status="Allocated", department_id=eng_dept.id),
+            models.Asset(tag="AF-0099", name="Conference Speakerphone", category_id=av.id, serial_number="SPK999", acquisition_date=today - datetime.timedelta(days=100), acquisition_cost=400.0, condition="Good", location="Room HR-1", status="Available", shared_flag=True, department_id=hr_dept.id),
         ]
         db.add_all(assets)
         db.commit()

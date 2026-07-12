@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Settings,
+  FileText,
   BarChart2,
   Moon,
   Sun,
@@ -86,6 +87,7 @@ const Layout = ({ children, user, setUser }) => {
     { name: 'Allocations', path: '/allocations', icon: KeyRound, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
     { name: 'Resource Bookings', path: '/bookings', icon: CalendarDays, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
     { name: 'Maintenance', path: '/maintenance', icon: Wrench, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
+    { name: 'Resource Requests', path: '/resource-requests', icon: FileText, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
     { name: 'Audits', path: '/audits', icon: ClipboardCheck, roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Reports', path: '/reports', icon: BarChart2, roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Activity Logs', path: '/logs', icon: Activity, roles: ['Admin'] },
@@ -197,8 +199,12 @@ const Layout = ({ children, user, setUser }) => {
                 <span className="text-sm font-semibold text-ink leading-tight group-hover:text-brand transition-colors">{user?.name}</span>
                 <span className="text-xs font-medium tracking-wide text-brand">{user?.role}</span>
               </div>
-              <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20 group-hover:ring-brand transition-all">
-                {user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />}
+              <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20 group-hover:ring-brand transition-all overflow-hidden">
+                {user?.profile_picture ? (
+                  <img src={`http://127.0.0.1:8000${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />
+                )}
               </div>
             </Link>
             <button 

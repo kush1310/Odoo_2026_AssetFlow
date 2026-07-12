@@ -13,7 +13,9 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  Send
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import AssetTagChip from '../components/AssetTagChip';
@@ -43,6 +45,13 @@ const Allocations = ({ user }) => {
   const [showReturnModal, setShowReturnModal] = useState(null);
   const [returnCondition, setReturnCondition] = useState('Good');
   const [returnNotes, setReturnNotes] = useState('');
+
+  // Custody Request states (employee)
+  const [showCustodyReqModal, setShowCustodyReqModal] = useState(false);
+  const [custodyAsset, setCustodyAsset] = useState('');
+  const [custodyExpectedReturn, setCustodyExpectedReturn] = useState('');
+  const [custodyReason, setCustodyReason] = useState('');
+  const [submittingCustody, setSubmittingCustody] = useState(false);
 
   const loadData = async () => {
     try {
@@ -165,7 +174,52 @@ const Allocations = ({ user }) => {
     setShowTransferModal(true);
   };
 
+  const handleCustodyRequest = async (e) => {
+    e.preventDefault();
+    setSubmittingCustody(true);
+    try {
+      await api.post('/allocations/request', {
+        asset_id: parseInt(custodyAsset),
+        allocation_date: new Date().toISOString().split('T')[0],
+        expected_return_date: custodyExpectedReturn || null,
+        reason: custodyReason
+      });
+      addToast("Custody request submitted! Awaiting manager approval.", "success");
+      setShowCustodyReqModal(false);
+      setCustodyAsset('');
+      setCustodyExpectedReturn('');
+      setCustodyReason('');
+      loadData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Custody request failed.", "error");
+    } finally {
+      setSubmittingCustody(false);
+    }
+  };
+
+  const handleCustodyApprove = async (allocId) => {
+    try {
+      await api.post(`/allocations/${allocId}/approve`);
+      addToast("Custody request approved!", "success");
+      loadData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Approval failed.", "error");
+    }
+  };
+
+  const handleCustodyReject = async (allocId) => {
+    try {
+      await api.post(`/allocations/${allocId}/reject`);
+      addToast("Custody request rejected.", "success");
+      loadData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Rejection failed.", "error");
+    }
+  };
+
   const activeAllocations = allocations.filter(a => a.state === 'approved' || a.state === 'overdue');
+  const pendingCustodyRequests = allocations.filter(a => a.state === 'Requested');
+  const availableAssets = assets.filter(a => a.status === 'Available');
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
@@ -183,6 +237,15 @@ const Allocations = ({ user }) => {
             >
               <KeyRound className="w-4 h-4 mr-2" />
               Allocate Asset
+            </button>
+          )}
+          {user?.role === 'Employee' && (
+            <button 
+              onClick={() => setShowCustodyReqModal(true)}
+              className="btn btn-primary"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Request Custody
             </button>
           )}
           <button 
@@ -371,6 +434,62 @@ const Allocations = ({ user }) => {
               )}
             </div>
           </div>
+
+          {/* PENDING CUSTODY REQUESTS (visible to managers) */}
+          {user?.role !== 'Employee' && pendingCustodyRequests.length > 0 && (
+            <div className="bg-white border border-slate-100 rounded-2xl flex flex-col shadow-sm overflow-hidden col-span-full">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50">
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4 text-amber" /> Pending Custody Requests
+                </h3>
+                <span className="text-xs font-bold text-amber bg-white px-2.5 py-1 rounded-lg border border-amber/20 shadow-sm">
+                  {pendingCustodyRequests.length} awaiting
+                </span>
+              </div>
+              <div className="divide-y divide-line">
+                {pendingCustodyRequests.map(alloc => {
+                  const assetObj = assets.find(a => a.id === alloc.asset_id);
+                  const empObj = employees.find(e => e.id === alloc.employee_id);
+                  return (
+                    <div key={alloc.id} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-surface transition">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <AssetTagChip tag={alloc.asset_tag || 'UNK'} />
+                          <span className="text-sm font-bold text-ink">{alloc.asset_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <User className="w-3.5 h-3.5" />
+                          Requested by: <span className="font-medium text-ink">{alloc.employee_name}</span>
+                        </div>
+                        {alloc.checkin_notes && (
+                          <p className="text-xs text-gray-500 bg-gray-50 border-l-2 border-gray-300 p-2 italic mt-1">
+                            "{alloc.checkin_notes}"
+                          </p>
+                        )}
+                        <div className="text-[10px] text-gray-400">
+                          Return: {alloc.expected_return_date || 'Open ended'}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => handleCustodyReject(alloc.id)}
+                          className="btn btn-secondary text-rust border-red-200 hover:bg-red-50 px-3 py-1.5 text-xs"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => handleCustodyApprove(alloc.id)}
+                          className="btn bg-brand text-white hover:bg-brand-deep px-3 py-1.5 text-xs"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -597,6 +716,69 @@ const Allocations = ({ user }) => {
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
                 <button type="button" onClick={() => setShowReturnModal(null)} className="btn btn-secondary">Cancel</button>
                 <button type="submit" className="btn btn-primary">Complete Return</button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CUSTODY REQUEST MODAL (Employee) */}
+      <AnimatePresence>
+        {showCustodyReqModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setShowCustodyReqModal(false)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleCustodyRequest} 
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg text-ink">Request Asset Custody</h3>
+                <button type="button" onClick={() => setShowCustodyReqModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">Select an available asset you'd like custody of. Your request will be reviewed by an Asset Manager.</p>
+
+              <div>
+                <label className="label">Select Available Asset</label>
+                <select 
+                  required value={custodyAsset} onChange={(e) => setCustodyAsset(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Select asset...</option>
+                  {availableAssets.map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Expected Return Date (Optional)</label>
+                <input 
+                  type="date" value={custodyExpectedReturn} onChange={(e) => setCustodyExpectedReturn(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="label">Reason for Request</label>
+                <textarea 
+                  required value={custodyReason} onChange={(e) => setCustodyReason(e.target.value)}
+                  placeholder="Why do you need custody of this asset?" rows="3"
+                  className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
+                <button type="button" onClick={() => setShowCustodyReqModal(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submittingCustody}>
+                  {submittingCustody ? "Submitting..." : "Submit Request"}
+                </button>
               </div>
             </motion.form>
           </div>

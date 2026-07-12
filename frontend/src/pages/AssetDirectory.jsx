@@ -17,7 +17,9 @@ import {
   Tag,
   DollarSign,
   Activity,
-  PackageSearch
+  PackageSearch,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import AssetTagChip from '../components/AssetTagChip';
@@ -25,6 +27,7 @@ import AssetTagChip from '../components/AssetTagChip';
 const AssetDirectory = ({ user }) => {
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
@@ -43,6 +46,9 @@ const AssetDirectory = ({ user }) => {
   const [assetCondition, setAssetCondition] = useState('New');
   const [assetLocation, setAssetLocation] = useState('');
   const [assetShared, setAssetShared] = useState(false);
+  const [assetDept, setAssetDept] = useState('');
+  const [assetImage, setAssetImage] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Detail Drawer state
   const [selectedAsset, setSelectedAsset] = useState(null);
@@ -60,12 +66,14 @@ const AssetDirectory = ({ user }) => {
 
   const loadData = async () => {
     try {
-      const [resAssets, resCats] = await Promise.all([
+      const [resAssets, resCats, resDepts] = await Promise.all([
         api.get('/assets'),
-        api.get('/categories')
+        api.get('/categories'),
+        api.get('/departments')
       ]);
       setAssets(resAssets.data);
       setCategories(resCats.data);
+      setDepartments(resDepts.data);
     } catch (err) {
       addToast("Failed to fetch inventory directory.", "error");
     } finally {
@@ -76,6 +84,27 @@ const AssetDirectory = ({ user }) => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setAssetImage(res.data.url);
+      addToast("Asset image uploaded successfully!", "success");
+    } catch (err) {
+      addToast("Failed to upload asset image.", "error");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -88,7 +117,9 @@ const AssetDirectory = ({ user }) => {
         acquisition_cost: parseFloat(assetAcqCost),
         condition: assetCondition,
         location: assetLocation,
-        shared_flag: assetShared
+        shared_flag: assetShared,
+        image: assetImage || null,
+        department_id: assetDept ? parseInt(assetDept) : null
       });
       addToast("Asset successfully registered in repository!", "success");
       setShowRegModal(false);
@@ -101,6 +132,8 @@ const AssetDirectory = ({ user }) => {
       setAssetCondition('New');
       setAssetLocation('');
       setAssetShared(false);
+      setAssetDept('');
+      setAssetImage('');
       loadData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Asset registration failed.", "error");
@@ -428,6 +461,19 @@ const AssetDirectory = ({ user }) => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="label">Owner Department (Optional)</label>
+                  <select 
+                    value={assetDept} onChange={(e) => setAssetDept(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select Department...</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex items-start gap-3 col-span-2 mt-2 p-4 bg-surface rounded-xl border border-line">
                   <div className="pt-0.5">
                     <input 
@@ -440,6 +486,42 @@ const AssetDirectory = ({ user }) => {
                       Mark as shared/bookable resource
                     </label>
                     <span className="text-xs text-gray-500">Allow this item to be booked for short-term use (e.g. Projector, Pool Car, Meeting Space).</span>
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="label">Upload Asset Image</label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-brand transition flex flex-col items-center justify-center gap-2 relative bg-surface">
+                    {assetImage ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <img 
+                          src={`http://127.0.0.1:8000${assetImage}`} 
+                          alt="Asset Preview" 
+                          className="max-h-36 rounded-lg object-contain border border-line"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setAssetImage('')}
+                          className="btn btn-secondary py-1 px-3 text-xs text-rust border-red-105 hover:bg-red-50"
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-500">
+                          {uploadingImage ? "Uploading file..." : "Drag and drop or browse files"}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -498,12 +580,28 @@ const AssetDirectory = ({ user }) => {
                       <span className="text-xs text-gray-500 font-semibold uppercase">Condition</span>
                       <span className="text-sm font-medium text-ink">{selectedAsset.condition}</span>
                     </div>
-                    <div className="flex justify-between items-center pb-1">
+                    <div className="flex justify-between items-center border-b border-line pb-2">
                       <span className="text-xs text-gray-500 font-semibold uppercase">Serial</span>
                       <span className="text-sm font-mono text-ink">{selectedAsset.serial_number || "N/A"}</span>
                     </div>
+                    {selectedAsset.department_name && (
+                      <div className="flex justify-between items-center pb-1">
+                        <span className="text-xs text-gray-500 font-semibold uppercase">Department</span>
+                        <span className="text-sm font-medium text-ink">{selectedAsset.department_name}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {selectedAsset.image && (
+                  <div className="w-full h-48 bg-slate-50 border border-line rounded-xl overflow-hidden shadow-sm">
+                    <img 
+                      src={`http://127.0.0.1:8000${selectedAsset.image}`} 
+                      alt={selectedAsset.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
                 {/* History Section */}
                 <div className="flex flex-col gap-4">

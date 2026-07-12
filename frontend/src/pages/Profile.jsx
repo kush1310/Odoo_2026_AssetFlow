@@ -14,7 +14,8 @@ import {
   Package, 
   AlertCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Upload
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import AssetTagChip from '../components/AssetTagChip';
@@ -40,6 +41,41 @@ const Profile = ({ user, setUser }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const uploadRes = await api.post('/upload', formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      const imageUrl = uploadRes.data.url;
+
+      const profileRes = await api.put('/auth/profile', {
+        name: user.name,
+        profile_picture: imageUrl
+      });
+
+      const updatedUser = { 
+        ...user, 
+        profile_picture: profileRes.data.profile_picture 
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      addToast("Profile picture updated successfully!", "success");
+    } catch (err) {
+      addToast("Failed to upload profile picture.", "error");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -134,8 +170,35 @@ const Profile = ({ user, setUser }) => {
       {/* PROFILE HEADER BADGE */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
-        <div className="w-20 h-20 rounded-full bg-brand/10 text-brand flex items-center justify-center font-extrabold text-3xl shadow-sm border border-brand/20 shrink-0">
-          {user?.name?.charAt(0).toUpperCase()}
+        <div className="relative group w-20 h-20 rounded-full bg-brand/10 text-brand flex items-center justify-center font-extrabold text-3xl shadow-sm border border-brand/20 shrink-0 overflow-hidden cursor-pointer">
+          {uploadingAvatar ? (
+            <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : user?.profile_picture ? (
+            <img 
+              src={`http://127.0.0.1:8000${user.profile_picture}`} 
+              alt={user.name} 
+              className="w-full h-full object-cover group-hover:opacity-40 transition" 
+            />
+          ) : (
+            <span className="group-hover:opacity-20 transition">{user?.name?.charAt(0).toUpperCase()}</span>
+          )}
+          
+          {!uploadingAvatar && (
+            <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-[10px] font-bold text-white">
+              <Upload className="w-4 h-4 mb-0.5" />
+              <span>Change</span>
+            </div>
+          )}
+          
+          <input 
+            type="file" 
+            accept="image/*"
+            onChange={handleAvatarUpload}
+            disabled={uploadingAvatar}
+            className="absolute inset-0 opacity-0 cursor-pointer" 
+          />
         </div>
         <div className="flex-1 flex flex-col gap-2 text-center md:text-left">
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">{user?.name}</h2>

@@ -8,7 +8,9 @@ import {
   Play, 
   CheckCircle2, 
   X,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { 
@@ -75,6 +77,12 @@ const SortableTaskCard = ({ req, assetObj, techObj, user, onActionClick }) => {
       </div>
       
       <p className="text-xs text-gray-600">"{req.issue_description}"</p>
+
+      {req.photo && (
+        <div className="rounded-lg overflow-hidden border border-line h-28">
+          <img src={`http://127.0.0.1:8000${req.photo}`} alt="Damage" className="w-full h-full object-cover" />
+        </div>
+      )}
       
       {(techObj || req.status === 'Assigned' || req.status === 'In Progress') && (
         <div className="text-[10px] text-brand font-semibold flex items-center gap-1">
@@ -119,6 +127,8 @@ const Maintenance = ({ user }) => {
   const [maintAsset, setMaintAsset] = useState('');
   const [maintDescription, setMaintDescription] = useState('');
   const [maintPriority, setMaintPriority] = useState('Low');
+  const [maintImage, setMaintImage] = useState('');
+  const [uploadingMaintImage, setUploadingMaintImage] = useState(false);
 
   const [assigningReq, setAssigningReq] = useState(null);
   const [assignTech, setAssignTech] = useState('');
@@ -151,19 +161,40 @@ const Maintenance = ({ user }) => {
     loadData();
   }, []);
 
+  const handleMaintImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingMaintImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setMaintImage(res.data.url);
+      addToast("Image uploaded!", "success");
+    } catch (err) {
+      addToast("Failed to upload image.", "error");
+    } finally {
+      setUploadingMaintImage(false);
+    }
+  };
+
   const handleRequest = async (e) => {
     e.preventDefault();
     try {
       await api.post('/maintenance', {
         asset_id: parseInt(maintAsset),
         issue_description: maintDescription,
-        priority: maintPriority
+        priority: maintPriority,
+        photo: maintImage || null
       });
       addToast("Maintenance request submitted successfully.", "success");
       setShowRequestModal(false);
       setMaintAsset('');
       setMaintDescription('');
       setMaintPriority('Low');
+      setMaintImage('');
       loadData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to submit request.", "error");
@@ -415,6 +446,42 @@ const Maintenance = ({ user }) => {
                   placeholder="Describe hardware failure, warning signals..." rows="4"
                   className="input-field h-auto py-2"
                 />
+              </div>
+
+              <div>
+                <label className="label">Upload Damage / Repair Photo</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-brand transition flex flex-col items-center justify-center gap-2 relative bg-surface">
+                  {maintImage ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <img 
+                        src={`http://127.0.0.1:8000${maintImage}`} 
+                        alt="Damage Preview" 
+                        className="max-h-32 rounded-lg object-contain border border-line"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setMaintImage('')}
+                        className="btn btn-secondary py-1 px-3 text-xs text-rust border-red-105 hover:bg-red-50"
+                      >
+                        Remove Photo
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-500">
+                        {uploadingMaintImage ? "Uploading..." : "Attach a photo of the damage"}
+                      </span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleMaintImageUpload}
+                        disabled={uploadingMaintImage}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
