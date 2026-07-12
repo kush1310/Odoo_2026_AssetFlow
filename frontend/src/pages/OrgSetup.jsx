@@ -200,13 +200,14 @@ const OrgSetup = () => {
                           <th className="py-3 px-4">Code</th>
                           <th className="py-3 px-4">Name</th>
                           <th className="py-3 px-4">Parent Dept</th>
+                          <th className="py-3 px-4">Head of Department</th>
                           <th className="py-3 px-4">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line bg-white">
                         {departments.length === 0 ? (
                           <tr>
-                            <td colSpan="4" className="py-8 text-center text-gray-500">No departments configured.</td>
+                            <td colSpan="5" className="py-8 text-center text-gray-500">No departments configured.</td>
                           </tr>
                         ) : (
                           departments.map(dept => (
@@ -215,6 +216,9 @@ const OrgSetup = () => {
                               <td className="py-3 px-4 font-semibold text-ink">{dept.name}</td>
                               <td className="py-3 px-4 text-gray-600">
                                 {departments.find(d => d.id === dept.parent_department_id)?.name || "None"}
+                              </td>
+                              <td className="py-3 px-4 text-gray-600">
+                                {employees.find(e => e.id === dept.manager_id)?.name || "None"}
                               </td>
                               <td className="py-3 px-4">
                                 <span className={`px-2.5 py-1 rounded-md text-xs font-bold border

@@ -282,7 +282,8 @@ const Maintenance = ({ user }) => {
   const cols = [
     { id: 'col-pending', title: 'Pending Approval', statuses: ['Pending'] },
     { id: 'col-approved', title: 'Unassigned', statuses: ['Approved'] },
-    { id: 'col-progress', title: 'In Progress', statuses: ['Assigned', 'In Progress'] },
+    { id: 'col-assigned', title: 'Technician Assigned', statuses: ['Assigned'] },
+    { id: 'col-progress', title: 'In Progress', statuses: ['In Progress'] },
     { id: 'col-resolved', title: 'Resolved', statuses: ['Resolved'] }
   ];
 
@@ -318,10 +319,10 @@ const Maintenance = ({ user }) => {
     // Check valid transitions based on current status and target column
     if (req.status === 'Pending' && targetColId === 'col-approved') {
       approveRequest(req.id);
-    } else if (req.status === 'Approved' && targetColId === 'col-progress') {
+    } else if (req.status === 'Approved' && targetColId === 'col-assigned') {
       setAssigningReq(req);
     } else if (req.status === 'Assigned' && targetColId === 'col-progress') {
-      startWork(req.id); // Moving from assigned to in progress is same column in UI, but maybe user drags it to trigger state update
+      startWork(req.id);
     } else if (req.status === 'In Progress' && targetColId === 'col-resolved') {
       setResolvingReq(req);
     }

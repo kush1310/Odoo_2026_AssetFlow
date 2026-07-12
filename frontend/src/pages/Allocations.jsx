@@ -77,6 +77,10 @@ const Allocations = ({ user }) => {
 
   useEffect(() => {
     loadData();
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('transfer') === 'true') {
+      setShowTransferModal(true);
+    }
   }, []);
 
   const handleAllocate = async (e) => {
@@ -452,6 +456,22 @@ const Allocations = ({ user }) => {
                    onChange={(val) => { setAllocAsset(val); setAllocConflict(null); }}
                  />
                </div>
+
+               {allocAsset && (() => {
+                 const selectedAssetObj = assets.find(a => String(a.id) === allocAsset);
+                 if (selectedAssetObj && selectedAssetObj.status !== 'Available') {
+                   const activeAlloc = allocations.find(a => a.asset_id === selectedAssetObj.id && (a.state === 'approved' || a.state === 'overdue'));
+                   const warningText = activeAlloc 
+                     ? `Already allocated to ${activeAlloc.employee_name} (${activeAlloc.department_name || 'No Dept'}). Direct reallocation is blocked.`
+                     : `Asset is currently ${selectedAssetObj.status}. Direct reallocation is blocked.`;
+                   return (
+                     <div className="p-3 bg-red-50 border border-red-200 text-rust text-xs rounded-lg font-medium">
+                       {warningText}
+                     </div>
+                   );
+                 }
+                 return null;
+               })()}
 
                <div className="relative">
                  <AnimatedSelect

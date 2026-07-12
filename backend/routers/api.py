@@ -343,11 +343,8 @@ def get_categories(db: Session = Depends(get_db),
 @router.get("/employees")
 def get_employees(db: Session = Depends(get_db),
                   current_user: models.User = Depends(auth.get_current_user)):
-    if current_user.role in ["Admin", "Asset Manager"]:
+    if current_user.role in ["Admin", "Asset Manager", "Employee", "Technician", "Department Head"]:
         return db.query(models.User).all()
-    elif current_user.role == "Department Head":
-        return db.query(models.User).filter(
-            models.User.department_id == current_user.department_id).all()
     return [current_user]
 
 

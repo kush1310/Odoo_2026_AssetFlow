@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { ShieldAlert, Eye, EyeOff, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GravityStars from '../components/ui/GravityStars';
 import RippleButton from '../components/ui/RippleButton';
@@ -82,9 +82,12 @@ const Login = ({ setUser }) => {
           )}
         </AnimatePresence>
         {/* Header */}
-        <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Log in to your account
+        <div className="flex flex-col gap-2 items-center text-center">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-[#7F56D9]">
+            <Activity className="w-6 h-6 animate-pulse" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mt-2">
+            AssetFlow Login
           </h1>
           <p className="text-sm text-gray-500">
             Welcome back! Please enter your details.

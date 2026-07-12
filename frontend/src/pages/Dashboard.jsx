@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import AnimatedSelect from '../components/ui/AnimatedSelect';
 import { 
   PackageCheck, 
   PackageX, 
@@ -116,6 +117,10 @@ const AdminDashboard = ({ user }) => {
             <PlusCircle className="w-4 h-4 mr-2" />
             Register Asset
           </Link>
+          <Link to="/allocations?transfer=true" className="btn btn-secondary shadow-sm whitespace-nowrap flex items-center justify-center shrink-0">
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Raise Custody Request
+          </Link>
           <Link to="/bookings?new=true" className="btn btn-primary shadow-sm whitespace-nowrap flex items-center justify-center shrink-0">
             <CalendarPlus className="w-4 h-4 mr-2" />
             Book Resource
@@ -225,25 +230,65 @@ const AdminDashboard = ({ user }) => {
 const EmployeeDashboard = ({ user }) => {
   const [allocations, setAllocations] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Transfer Form State
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAsset, setTransferAsset] = useState('');
+  const [transferTarget, setTransferTarget] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const { addToast } = useToast();
+
+  const fetchEmployeeData = async () => {
+    try {
+      const [resAllocs, resBookings, resTransfers, resAssets, resEmployees] = await Promise.all([
+        api.get('/allocations'),
+        api.get('/bookings'),
+        api.get('/transfers'),
+        api.get('/assets'),
+        api.get('/employees')
+      ]);
+      setAllocations(resAllocs.data);
+      setBookings(resBookings.data);
+      setTransfers(resTransfers.data);
+      setAssets(resAssets.data);
+      setEmployees(resEmployees.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEmployeeData = async () => {
-      try {
-        const [resAllocs, resBookings] = await Promise.all([
-          api.get('/allocations'),
-          api.get('/bookings')
-        ]);
-        setAllocations(resAllocs.data);
-        setBookings(resBookings.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchEmployeeData();
   }, []);
+
+  const handleRequestTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferAsset || !transferTarget || !transferReason.trim()) {
+      addToast("Please fill in all fields.", "error");
+      return;
+    }
+    try {
+      await api.post('/transfers', {
+        asset_id: parseInt(transferAsset),
+        target_holder_id: parseInt(transferTarget),
+        reason: transferReason
+      });
+      addToast("Transfer request successfully raised. Awaiting approval.", "success");
+      setShowTransferModal(false);
+      setTransferAsset('');
+      setTransferTarget('');
+      setTransferReason('');
+      fetchEmployeeData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Transfer request failed.", "error");
+    }
+  };
 
   if (loading) {
     return (
@@ -261,7 +306,14 @@ const EmployeeDashboard = ({ user }) => {
           <h2 className="text-2xl font-bold tracking-tight text-ink">My Resource Custody</h2>
           <p className="text-sm text-gray-500">Welcome, {user?.name}. View your active custody assets and reservation timelines.</p>
         </div>
-        <div className="shrink-0">
+        <div className="flex gap-3 shrink-0">
+          <button 
+            onClick={() => setShowTransferModal(true)}
+            className="btn btn-secondary shadow-sm whitespace-nowrap flex items-center justify-center shrink-0"
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Request Transfer
+          </button>
           <Link to="/bookings?new=true" className="btn btn-primary shadow-sm whitespace-nowrap flex items-center justify-center shrink-0">
             <CalendarPlus className="w-4 h-4 mr-2" />
             Book Resource
@@ -335,6 +387,58 @@ const EmployeeDashboard = ({ user }) => {
         )}
       </div>
 
+      {/* Custody Transfers List */}
+      <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-3 border-b border-line">
+          <ArrowLeftRight className="w-5 h-5 text-brand" />
+          <h3 className="font-bold text-base text-ink">My Custody Transfers</h3>
+        </div>
+        {transfers.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+            <ArrowLeftRight className="w-12 h-12 text-gray-200" />
+            <p className="text-sm">No custody transfers recorded.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface border-b border-line text-gray-500 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Asset</th>
+                  <th className="py-3 px-4">From</th>
+                  <th className="py-3 px-4">To</th>
+                  <th className="py-3 px-4">Reason</th>
+                  <th className="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-white text-ink">
+                {transfers.map(t => (
+                  <tr key={t.id} className="hover:bg-surface/50 transition">
+                    <td className="py-3.5 px-4 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <AssetTagChip tag={t.asset_tag} />
+                        <span>{t.asset_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-600">{t.source_holder_name}</td>
+                    <td className="py-3.5 px-4 text-gray-600">{t.target_holder_name}</td>
+                    <td className="py-3.5 px-4 text-gray-500 italic">"{t.reason}"</td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border uppercase tracking-wider
+                        ${t.state === 'Requested' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                        ${t.state === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                        ${t.state === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                      `}>
+                        {t.state}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Active Bookings List */}
       <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-2 pb-3 border-b border-line">
@@ -383,6 +487,68 @@ const EmployeeDashboard = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* REQUEST TRANSFER MODAL */}
+      <AnimatePresence>
+        {showTransferModal && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setShowTransferModal(false)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleRequestTransfer} 
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-2xl z-10"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg text-ink">Request Custody Transfer</h3>
+                <button type="button" onClick={() => setShowTransferModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+              </div>
+
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Allocated Asset"
+                  required
+                  placeholder="Select asset..."
+                  options={assets.filter(a => a.status === 'Allocated').map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
+                  value={transferAsset}
+                  onChange={setTransferAsset}
+                />
+              </div>
+
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Recipient Employee"
+                  required
+                  placeholder="Select recipient..."
+                  options={employees.filter(e => e.id !== user?.id).map(emp => ({ value: String(emp.id), label: emp.name }))}
+                  value={transferTarget}
+                  onChange={setTransferTarget}
+                />
+              </div>
+
+              <div>
+                <label className="label">Reason for Transfer</label>
+                <textarea 
+                  required value={transferReason} onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="e.g. Reallocation due to project transition..." rows="3"
+                  className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
+                <RippleButton type="button" variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Submit Transfer</RippleButton>
+              </div>
+            </motion.form>
+          </div>,
+          document.body
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -392,35 +558,58 @@ const EmployeeDashboard = ({ user }) => {
 // ══════════════════════════════════════════════════════════════════════════════
 const TechnicianDashboard = ({ user }) => {
   const [tasks, setTasks] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null); // Task to resolve
   const [resNotes, setResNotes] = useState('');
   const [partsReplaced, setPartsReplaced] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Transfer Form State
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAsset, setTransferAsset] = useState('');
+  const [transferTarget, setTransferTarget] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  
   const { addToast } = useToast();
 
-  const loadTasks = async () => {
+  const loadDashboardData = async () => {
     try {
-      const res = await api.get('/maintenance');
-      // Filter tasks assigned to this technician
-      setTasks(res.data.filter(t => t.technician_id === user.id));
+      const [resTasks, resAllocs, resBookings, resTransfers, resAssets, resEmployees] = await Promise.all([
+        api.get('/maintenance'),
+        api.get('/allocations'),
+        api.get('/bookings'),
+        api.get('/transfers'),
+        api.get('/assets'),
+        api.get('/employees')
+      ]);
+      setTasks(resTasks.data.filter(t => t.technician_id === user.id));
+      setAllocations(resAllocs.data);
+      setBookings(resBookings.data);
+      setTransfers(resTransfers.data);
+      setAssets(resAssets.data);
+      setEmployees(resEmployees.data);
     } catch (err) {
       console.error(err);
-      addToast("Failed to fetch maintenance tasks.", "error");
+      addToast("Failed to fetch dashboard data.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTasks();
+    loadDashboardData();
   }, []);
 
   const handleStart = async (taskId) => {
     try {
       await api.post(`/maintenance/${taskId}/start`);
       addToast("Task started! Status changed to In Progress.", "success");
-      loadTasks();
+      loadDashboardData();
     } catch (err) {
       addToast("Failed to start repair task.", "error");
     }
@@ -430,7 +619,7 @@ const TechnicianDashboard = ({ user }) => {
     try {
       await api.post(`/maintenance/${taskId}/extend`, { extension_minutes: 20 });
       addToast("Time extended by 20 minutes. Subsequent tasks shifted.", "success");
-      loadTasks();
+      loadDashboardData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to extend work duration.", "error");
     }
@@ -452,11 +641,34 @@ const TechnicianDashboard = ({ user }) => {
       setSelectedTask(null);
       setResNotes('');
       setPartsReplaced('');
-      loadTasks();
+      loadDashboardData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Failed to resolve task.", "error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRequestTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferAsset || !transferTarget || !transferReason.trim()) {
+      addToast("Please fill in all fields.", "error");
+      return;
+    }
+    try {
+      await api.post('/transfers', {
+        asset_id: parseInt(transferAsset),
+        target_holder_id: parseInt(transferTarget),
+        reason: transferReason
+      });
+      addToast("Transfer request successfully raised. Awaiting approval.", "success");
+      setShowTransferModal(false);
+      setTransferAsset('');
+      setTransferTarget('');
+      setTransferReason('');
+      loadDashboardData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Transfer request failed.", "error");
     }
   };
 
@@ -593,6 +805,182 @@ const TechnicianDashboard = ({ user }) => {
         )}
       </div>
 
+      {/* Custody Assets List */}
+      <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="flex justify-between items-center pb-3 border-b border-line">
+          <div className="flex items-center gap-2">
+            <PackageCheck className="w-5 h-5 text-brand" />
+            <h3 className="font-bold text-base text-ink">My Allocated Assets</h3>
+          </div>
+          <button 
+            onClick={() => setShowTransferModal(true)}
+            className="btn btn-secondary shadow-sm whitespace-nowrap flex items-center justify-center shrink-0 text-xs py-1.5 h-9"
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Request Transfer
+          </button>
+        </div>
+        {allocations.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+            <PackageX className="w-12 h-12 text-gray-200" />
+            <p className="text-sm">You do not hold any allocated assets currently.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface border-b border-line text-gray-500 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Tag</th>
+                  <th className="py-3 px-4">Asset Name</th>
+                  <th className="py-3 px-4">Allocated On</th>
+                  <th className="py-3 px-4">Due Date</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Return Custody Instruction</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-white text-ink">
+                {allocations.map(alloc => {
+                  const isOverdue = alloc.state === 'overdue' || (alloc.expected_return_date && new Date(alloc.expected_return_date) < new Date());
+                  return (
+                    <tr key={alloc.id} className="hover:bg-surface/50 transition">
+                      <td className="py-3.5 px-4 font-mono font-bold text-brand">{alloc.asset_tag}</td>
+                      <td className="py-3.5 px-4 font-semibold">{alloc.asset_name}</td>
+                      <td className="py-3.5 px-4 text-gray-600">
+                        {new Date(alloc.allocation_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {alloc.expected_return_date ? (
+                          <span className={`font-semibold flex items-center gap-1.5 ${isOverdue ? 'text-rust' : 'text-gray-600'}`}>
+                            <Clock className="w-3.5 h-3.5" />
+                            {new Date(alloc.expected_return_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Ongoing Custody</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border uppercase tracking-wider
+                          ${isOverdue 
+                            ? 'bg-red-50 text-red-700 border-red-200' 
+                            : 'bg-green-50 text-green-700 border-green-200'
+                          }
+                        `}>
+                          {isOverdue ? 'Overdue' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-gray-500 font-medium">
+                        Please hand back this resource to the <span className="font-bold text-ink">Asset Manager</span> at the HQ inventory depot before unassigning.
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Custody Transfers List */}
+      <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-3 border-b border-line">
+          <ArrowLeftRight className="w-5 h-5 text-brand" />
+          <h3 className="font-bold text-base text-ink">My Custody Transfers</h3>
+        </div>
+        {transfers.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+            <ArrowLeftRight className="w-12 h-12 text-gray-200" />
+            <p className="text-sm">No custody transfers recorded.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface border-b border-line text-gray-500 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Asset</th>
+                  <th className="py-3 px-4">From</th>
+                  <th className="py-3 px-4">To</th>
+                  <th className="py-3 px-4">Reason</th>
+                  <th className="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-white text-ink">
+                {transfers.map(t => (
+                  <tr key={t.id} className="hover:bg-surface/50 transition">
+                    <td className="py-3.5 px-4 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <AssetTagChip tag={t.asset_tag} />
+                        <span>{t.asset_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-600">{t.source_holder_name}</td>
+                    <td className="py-3.5 px-4 text-gray-600">{t.target_holder_name}</td>
+                    <td className="py-3.5 px-4 text-gray-500 italic">"{t.reason}"</td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border uppercase tracking-wider
+                        ${t.state === 'Requested' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                        ${t.state === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                        ${t.state === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                      `}>
+                        {t.state}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Active Bookings List */}
+      <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-3 border-b border-line">
+          <Calendar className="w-5 h-5 text-brand" />
+          <h3 className="font-bold text-base text-ink">My Upcoming Bookings</h3>
+        </div>
+        {bookings.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+            <Calendar className="w-12 h-12 text-gray-200" />
+            <p className="text-sm">No bookings scheduled.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface border-b border-line text-gray-500 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Resource</th>
+                  <th className="py-3 px-4">Reservation Date Range</th>
+                  <th className="py-3 px-4">Purpose</th>
+                  <th className="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-white text-ink">
+                {bookings.filter(b => b.status !== 'Cancelled').map(book => {
+                  const start = new Date(book.start_time).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+                  const end = new Date(book.end_time).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+                  return (
+                    <tr key={book.id} className="hover:bg-surface/50 transition">
+                      <td className="py-3.5 px-4 font-semibold">{book.asset_name}</td>
+                      <td className="py-3.5 px-4 font-semibold text-gray-600">{start === end ? start : `${start} - ${end}`}</td>
+                      <td className="py-3.5 px-4 text-gray-500 italic">"{book.purpose}"</td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border uppercase tracking-wider
+                          ${book.status === 'Upcoming' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                          ${book.status === 'Ongoing' ? 'bg-brand/10 text-brand border-brand/20' : ''}
+                          ${book.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                        `}>
+                          {book.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* RESOLUTION FEEDBACK MODAL */}
       <AnimatePresence>
         {selectedTask && createPortal(
@@ -640,6 +1028,68 @@ const TechnicianDashboard = ({ user }) => {
                 <RippleButton type="submit" variant="primary" disabled={submitting}>
                   {submitting ? "Submitting..." : "Confirm Resolved"}
                 </RippleButton>
+              </div>
+            </motion.form>
+          </div>,
+          document.body
+        )}
+      </AnimatePresence>
+
+      {/* REQUEST TRANSFER MODAL */}
+      <AnimatePresence>
+        {showTransferModal && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setShowTransferModal(false)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleRequestTransfer} 
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-2xl z-10"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg text-ink">Request Custody Transfer</h3>
+                <button type="button" onClick={() => setShowTransferModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+              </div>
+
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Allocated Asset"
+                  required
+                  placeholder="Select asset..."
+                  options={assets.filter(a => a.status === 'Allocated').map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
+                  value={transferAsset}
+                  onChange={setTransferAsset}
+                />
+              </div>
+
+              <div className="relative">
+                <AnimatedSelect
+                  label="Select Recipient Employee"
+                  required
+                  placeholder="Select recipient..."
+                  options={employees.filter(e => e.id !== user?.id).map(emp => ({ value: String(emp.id), label: emp.name }))}
+                  value={transferTarget}
+                  onChange={setTransferTarget}
+                />
+              </div>
+
+              <div>
+                <label className="label">Reason for Transfer</label>
+                <textarea 
+                  required value={transferReason} onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="e.g. Reallocation due to project transition..." rows="3"
+                  className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
+                <RippleButton type="button" variant="secondary" onClick={() => setShowTransferModal(false)}>Cancel</RippleButton>
+                <RippleButton type="submit" variant="primary">Submit Transfer</RippleButton>
               </div>
             </motion.form>
           </div>,
