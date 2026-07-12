@@ -15,6 +15,7 @@ import Maintenance from './pages/Maintenance';
 import Audits from './pages/Audits';
 import Reports from './pages/Reports';
 import Logs from './pages/Logs';
+import Help from './pages/Help';
 
 // Helper component to guard private routes
 const PrivateRoute = ({ children, allowedRoles, user }) => {
@@ -104,6 +105,7 @@ function App() {
                         </PrivateRoute>
                       } 
                     />
+                    <Route path="/help" element={<Help user={user} />} />
                     
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

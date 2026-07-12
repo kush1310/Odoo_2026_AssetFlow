@@ -17,6 +17,7 @@ import {
   X,
   Settings,
   BarChart2,
+  HelpCircle,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import NotificationStack from './ui/NotificationStack';
@@ -173,6 +174,7 @@ const Layout = ({ children, user, setUser }) => {
     { name: 'Audits',              path: '/audits',      icon: ClipboardCheck,  roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Reports',             path: '/reports',     icon: BarChart2,       roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Logs',                path: '/logs',        icon: Activity,        roles: ['Admin'] },
+    { name: 'Help',                path: '/help',        icon: HelpCircle,      roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
   ];
 
   const allowedItems = allNavItems.filter(item => item.roles.includes(user?.role));
