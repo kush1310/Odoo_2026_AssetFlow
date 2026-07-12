@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -50,72 +51,74 @@ function App() {
   }
 
   return (
-    <ToastProvider>
-      <Router>
-        <Routes>
-          {/* Unprotected Auth Routes */}
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login setUser={setUser} />} />
-          <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
-          <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
-          <Route path="/reset-password" element={user ? <Navigate to="/" replace /> : <ResetPassword />} />
-          
-          {/* Protected Dashboard/App Routes */}
-          <Route 
-            path="/*" 
-            element={
-              <PrivateRoute user={user}>
-                <Layout user={user} setUser={setUser}>
-                  <Routes>
-                    <Route path="/" element={<Dashboard user={user} />} />
-                    <Route path="/assets" element={<AssetDirectory user={user} />} />
-                    <Route path="/allocations" element={<Allocations user={user} />} />
-                    <Route path="/bookings" element={<Bookings user={user} />} />
-                    <Route path="/maintenance" element={<Maintenance user={user} />} />
-                    
-                    {/* Scope restricted routes */}
-                    <Route 
-                      path="/org-setup" 
-                      element={
-                        <PrivateRoute allowedRoles={['Admin']} user={user}>
-                          <OrgSetup user={user} />
-                        </PrivateRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/audits" 
-                      element={
-                        <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
-                          <Audits user={user} />
-                        </PrivateRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/reports" 
-                      element={
-                        <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
-                          <Reports user={user} />
-                        </PrivateRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/logs" 
-                      element={
-                        <PrivateRoute allowedRoles={['Admin']} user={user}>
-                          <Logs />
-                        </PrivateRoute>
-                      } 
-                    />
-                    <Route path="/help" element={<Help user={user} />} />
-                    
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Layout>
-              </PrivateRoute>
-            } 
-          />
-        </Routes>
-      </Router>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <Router>
+          <Routes>
+            {/* Unprotected Auth Routes */}
+            <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login setUser={setUser} />} />
+            <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
+            <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
+            <Route path="/reset-password" element={user ? <Navigate to="/" replace /> : <ResetPassword />} />
+            
+            {/* Protected Dashboard/App Routes */}
+            <Route 
+              path="/*" 
+              element={
+                <PrivateRoute user={user}>
+                  <Layout user={user} setUser={setUser}>
+                    <Routes>
+                      <Route path="/" element={<Dashboard user={user} />} />
+                      <Route path="/assets" element={<AssetDirectory user={user} />} />
+                      <Route path="/allocations" element={<Allocations user={user} />} />
+                      <Route path="/bookings" element={<Bookings user={user} />} />
+                      <Route path="/maintenance" element={<Maintenance user={user} />} />
+                      
+                      {/* Scope restricted routes */}
+                      <Route 
+                        path="/org-setup" 
+                        element={
+                          <PrivateRoute allowedRoles={['Admin']} user={user}>
+                            <OrgSetup user={user} />
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/audits" 
+                        element={
+                          <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
+                            <Audits user={user} />
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/reports" 
+                        element={
+                          <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
+                            <Reports user={user} />
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/logs" 
+                        element={
+                          <PrivateRoute allowedRoles={['Admin']} user={user}>
+                            <Logs />
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route path="/help" element={<Help user={user} />} />
+                      
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Layout>
+                </PrivateRoute>
+              } 
+            />
+          </Routes>
+        </Router>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 

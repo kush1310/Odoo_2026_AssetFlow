@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func, text
@@ -10,6 +10,7 @@ from database import get_db
 import models
 import schemas
 import auth
+import mail
 
 router = APIRouter(prefix="/api")
 
@@ -108,7 +109,11 @@ def enrich_log(log: models.ActivityLog, db: Session) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/auth/signup")
-def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+def signup(
+    user_in: schemas.UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     if db.query(models.User).filter(models.User.email == user_in.email).first():
         raise HTTPException(400, "An account with this email already exists.")
     disposable = ["yopmail.com", "mailinator.com", "tempmail.com", "guerrillamail.com"]
@@ -128,6 +133,9 @@ def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     log_activity(db, new_user.id, "SIGNUP", "users", new_user.id,
                  f"Employee account created for {new_user.name}")
+    
+    background_tasks.add_task(mail.send_welcome_email, new_user.email, new_user.name)
+    
     return new_user
 
 
@@ -175,6 +183,76 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "role": user.role,
         "name": user.name,
+        "id": user.id,
+        "department_id": user.department_id
+    }
+
+
+@router.post("/auth/google")
+def google_login(
+    payload: schemas.GoogleLoginRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    import urllib.request
+    import json
+    import uuid
+
+    credential = payload.credential
+    url = f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            token_info = json.loads(response.read().decode())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid Google credentials or token verification failed.")
+
+    google_client_id = "148457849994-fqjcj2hdmops0t4flvoh27aa7hopdmpi.apps.googleusercontent.com"
+    if token_info.get("aud") != google_client_id:
+        raise HTTPException(status_code=400, detail="Token audience does not match.")
+
+    email = token_info.get("email")
+    name = token_info.get("name")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not provided by Google.")
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    is_new = False
+    if not user:
+        user = models.User(
+            name=name or email.split("@")[0],
+            email=email,
+            password_hash=auth.get_password_hash(str(uuid.uuid4())),
+            department_id=None,
+            role="Employee",
+            status="Active"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        is_new = True
+
+    if user.status != "Active":
+        raise HTTPException(status_code=403, detail="Your account has been deactivated. Please contact administration.")
+
+    token_data = {"email": user.email, "role": user.role, "user_id": user.id}
+    access_token = auth.create_access_token(token_data)
+    refresh_token = auth.create_refresh_token(token_data)
+
+    if is_new:
+        log_activity(db, user.id, "SIGNUP", "users", user.id,
+                     f"Employee account created via Google OAuth for {user.name}")
+        background_tasks.add_task(mail.send_welcome_email, user.email, user.name)
+    else:
+        log_activity(db, user.id, "LOGIN", "users", user.id,
+                     f"Login via Google OAuth from {user.email}")
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "name": user.name,
         "email": user.email,
         "id": user.id,
         "department_id": user.department_id
@@ -187,15 +265,42 @@ def get_me(current_user: models.User = Depends(auth.get_current_user)):
 
 
 @router.post("/auth/forgot-password")
-def forgot_password(req: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    req: schemas.ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     user = db.query(models.User).filter(models.User.email == req.email).first()
     if not user:
         # Don't reveal whether email exists
         return {"message": "If this email exists, a reset link has been sent."}
+    
     reset_token = auth.create_reset_token(user.email)
-    # In production, send via email. For hackathon, return in response.
-    return {"message": "Reset token generated.", "reset_token": reset_token,
-            "note": "In production this would be sent via email."}
+    
+    subject = "Reset your AssetFlow Password"
+    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Reset your AssetFlow Password</h2>
+        <p style="color: #4b5563; line-height: 1.6;">Hello,</p>
+        <p style="color: #4b5563; line-height: 1.6;">We received a request to reset your password for your AssetFlow account. Click the button below to choose a new password. This link is valid for 15 minutes.</p>
+        <div style="margin: 24px 0; text-align: center;">
+            <a href="{reset_link}" style="display: inline-block; padding: 12px 24px; color: #ffffff; background-color: #0d9488; text-decoration: none; border-radius: 6px; font-weight: 500;">Reset Password</a>
+        </div>
+        <p style="color: #4b5563; line-height: 1.6;">If the button above does not work, copy and paste the link below into your web browser:</p>
+        <p style="color: #2563eb; word-break: break-all; font-size: 14px;">{reset_link}</p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px;">If you did not request a password reset, please ignore this email.</p>
+    </div>
+    """
+    
+    background_tasks.add_task(mail.send_smtp_email, user.email, subject, html_content)
+    
+    return {
+        "message": "If this email exists, a reset link has been sent.",
+        "reset_token": reset_token,
+        "note": "A reset email has been dispatched via Brevo SMTP."
+    }
 
 
 @router.post("/auth/reset-password")

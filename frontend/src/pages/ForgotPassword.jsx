@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { Key, ShieldAlert, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Key, ShieldAlert, CheckCircle, ArrowLeft, Mail, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import GravityStars from '../components/ui/GravityStars';
-import RippleButton from '../components/ui/RippleButton';
+import AssetTagChip from '../components/AssetTagChip';
 import { useToast } from '../components/Toast';
 
 const ForgotPassword = () => {
@@ -39,114 +38,133 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#F9FAFB] flex items-center justify-center p-4">
-      {/* Premium subtle stars background */}
-      <GravityStars starCount={40} starColor="#7F56D9" className="z-0 opacity-40" />
+    <div className="min-h-screen bg-slate-50 flex bg-grid-pattern relative overflow-hidden">
+      {/* Decorative Glow Orb */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-light/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative z-10 w-full max-w-[400px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col items-center gap-6"
-      >
-        {/* Key Icon inside styled frame — matches Image 1 */}
-        <div className="w-12 h-12 rounded-xl border border-gray-200 bg-white flex items-center justify-center shadow-sm">
-          <Key className="w-5 h-5 text-gray-700" />
-        </div>
-
-        {/* Title & Subtitle */}
-        <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-            Forgot password?
-          </h1>
-          <p className="text-sm text-gray-500 max-w-[280px] mx-auto">
-            No worries, we'll send you reset instructions.
+      {/* Brand Panel (Left) */}
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand-deep via-brand to-brand p-16 flex-col justify-between relative overflow-hidden">
+        {/* Subtle grid pattern in panel */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 text-white mb-12">
+            <span className="bg-white/10 backdrop-blur-md border border-white/20 p-2 rounded-xl shadow-sm">
+              <Package className="w-6 h-6 text-brand-light" />
+            </span>
+            <span className="text-2xl font-bold tracking-tight text-white">AssetFlow</span>
+          </div>
+          <h2 className="text-5xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+            Recover Your<br />Account Access
+          </h2>
+          <p className="text-teal-50/80 text-lg max-w-md leading-relaxed">
+            Enter your registered work email to verify identity and generate a secure password reset token.
           </p>
         </div>
+        
+        {/* Animated Background Elements */}
+        <div className="absolute top-1/4 right-10 flex flex-col gap-6 opacity-80 transform rotate-12">
+          <AssetTagChip tag="RESET-AUTH" className="shadow-2xl scale-150 border border-teal-500/20 bg-slate-900/90" />
+        </div>
 
-        {/* Error Alert */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="w-full overflow-hidden"
-            >
-              <div className="flex items-center gap-2.5 p-3 bg-red-50 border border-red-100 text-rust text-xs rounded-lg font-medium">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="relative z-10 text-teal-100/50 text-xs font-semibold tracking-wider">
+          © {new Date().getFullYear()} ASSETFLOW SYSTEMS. ALL RIGHTS RESERVED.
+        </div>
+      </div>
 
-        {/* Success Alert / Demo Token */}
-        <AnimatePresence>
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full p-4 bg-green-50 border border-green-100 text-brand text-xs rounded-xl flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2.5">
-                <CheckCircle className="w-4.5 h-4.5 shrink-0 text-green-600" />
-                <span className="font-semibold">{success}</span>
-              </div>
-              {demoToken && (
-                <div className="mt-2 pt-2 border-t border-green-200/50 text-[11px] text-brand-deep">
-                  <span className="font-bold">Demo reset token:</span>
-                  <div className="bg-white p-2 rounded border border-green-200 font-mono select-all break-all my-1.5 font-bold">
-                    {demoToken}
-                  </div>
-                  <Link
-                    to={`/reset-password?token=${encodeURIComponent(demoToken)}`}
-                    className="underline font-bold hover:text-brand text-brand-deep mt-1 block"
-                  >
-                    Click to reset instantly using this token
-                  </Link>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Form */}
-        {!success && (
-          <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7F56D9] focus:border-transparent transition-all"
-              />
-            </div>
-
-            <RippleButton
-              type="submit"
-              variant="purple"
-              size="lg"
-              disabled={loading}
-              className="w-full mt-1"
-            >
-              {loading ? 'Sending...' : 'Reset password'}
-            </RippleButton>
-          </form>
-        )}
-
-        {/* Back Link */}
-        <Link
-          to="/login"
-          className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors mt-2"
+      {/* Form Panel (Right) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-10 shadow-2xl flex flex-col gap-6"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to log in
-        </Link>
-      </motion.div>
+          <div className="flex flex-col gap-2">
+            <Link to="/login" className="text-xs text-slate-400 hover:text-brand flex items-center gap-1 mb-2 font-bold transition">
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Log In
+            </Link>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+              Forgot Password
+            </h1>
+            <p className="text-sm text-slate-400 font-medium">Provide your account email address to receive a reset token</p>
+          </div>
+
+          {/* Error Alert */}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-red-50 border border-red-200 text-rust text-sm rounded-2xl flex items-center gap-3"
+              >
+                <ShieldAlert className="w-5 h-5 shrink-0" />
+                <span className="font-semibold">{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Success Alert / Demo Token */}
+          <AnimatePresence>
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-5 bg-teal-50/50 border border-teal-200 text-brand-deep text-sm rounded-2xl flex flex-col gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 shrink-0 text-brand" />
+                  <span className="font-bold">{success}</span>
+                </div>
+                {demoToken && (
+                  <div className="mt-2 pt-3 border-t border-teal-200/50 text-xs">
+                    <span className="font-bold text-slate-500 uppercase tracking-widest text-[9px]">Demo Mode Token:</span>
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-teal-200 font-mono select-all break-all my-2 font-bold text-slate-700">
+                      {demoToken}
+                    </div>
+                    <Link
+                      to={`/reset-password?token=${encodeURIComponent(demoToken)}`}
+                      className="btn btn-primary w-full py-2 text-xs font-semibold shadow-sm"
+                    >
+                      Instantly Reset Password
+                    </Link>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!success && (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <div>
+                <label className="label">Work Email</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="input-field pl-11"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary w-full py-3 mt-2 shadow-lg shadow-brand/10 text-base"
+              >
+                {loading ? "Sending..." : "Request Reset Token"}
+              </button>
+            </form>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 };

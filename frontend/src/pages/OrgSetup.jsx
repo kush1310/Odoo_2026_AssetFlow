@@ -130,15 +130,16 @@ const OrgSetup = () => {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-line shadow-sm">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Organization Setup</h2>
-          <p className="text-sm text-gray-500">Configure departments, asset categories, and manage employee access.</p>
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Organization Setup</h2>
+          <p className="text-sm text-slate-400 font-medium">Configure departments, asset categories, and manage employee access.</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-line">
+      <div className="flex gap-2 border-b border-slate-100">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -147,7 +148,7 @@ const OrgSetup = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`relative flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-colors
-                ${isActive ? 'text-brand' : 'text-gray-500 hover:text-ink'}
+                ${isActive ? 'text-brand' : 'text-slate-500 hover:text-slate-900'}
               `}
             >
               <Icon className="w-4 h-4" />
@@ -165,7 +166,7 @@ const OrgSetup = () => {
       </div>
 
       {/* TAB CONTENTS */}
-      <div className="bg-white border border-line rounded-2xl shadow-sm min-h-[400px]">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm min-h-[400px]">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />

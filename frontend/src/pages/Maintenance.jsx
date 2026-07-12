@@ -11,9 +11,6 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
-import { HandWrittenTitle } from '../components/ui/HandWrittenTitle';
-import AnimatedSelect from '../components/ui/AnimatedSelect';
-import RippleButton from '../components/ui/RippleButton';
 import { 
   DndContext, 
   closestCenter,
@@ -300,21 +297,20 @@ const Maintenance = ({ user }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
-      <div className="bg-white p-6 rounded-2xl border border-line shadow-sm text-center">
-        <HandWrittenTitle 
-          title="Maintenance Dispatcher" 
-          subtitle="Track repair tickets, assign technician specialists, and update lifecycle statuses."
-        />
-        <div className="mt-4 flex justify-center">
-          <RippleButton 
-            variant="primary"
-            onClick={() => setShowRequestModal(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Raise Repair Ticket
-          </RippleButton>
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 h-[calc(100vh-6rem)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm gap-4 shrink-0 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-light/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex flex-col gap-1 relative z-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Maintenance Board</h2>
+          <p className="text-sm text-slate-400 font-medium">Drag tickets to update status or assign tasks.</p>
         </div>
+        <button 
+          onClick={() => setShowRequestModal(true)}
+          className="btn btn-primary whitespace-nowrap relative z-10"
+        >
+          <Wrench className="w-4 h-4 mr-2" />
+          Raise Ticket
+        </button>
       </div>
 
       {loading ? (
@@ -327,12 +323,12 @@ const Maintenance = ({ user }) => {
             {cols.map(col => {
               const colItems = getColItems(col.statuses);
               return (
-                <div key={col.id} className="bg-surface border border-line p-4 rounded-2xl flex flex-col gap-4 min-w-[300px] w-full max-w-sm shrink-0">
-                  <div className="flex justify-between items-center pb-2 border-b border-line">
-                    <span className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                <div key={col.id} className="bg-slate-100/50 border border-slate-100 p-4 rounded-2xl flex flex-col gap-4 min-w-[300px] w-full max-w-sm shrink-0">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                       {col.title}
                     </span>
-                    <span className="bg-white text-gray-600 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm border border-line">
+                    <span className="bg-white text-slate-400 px-2.5 py-0.5 rounded-lg text-xs font-bold shadow-sm border border-slate-100">
                       {colItems.length}
                     </span>
                   </div>
@@ -386,30 +382,31 @@ const Maintenance = ({ user }) => {
                 <button type="button" onClick={() => setShowRequestModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
               </div>
 
-               <div className="relative">
-                 <AnimatedSelect
-                   label="Select Affected Asset"
-                   required
-                   placeholder="Search asset..."
-                   options={assets.map(a => ({ value: String(a.id), label: `${a.name} (${a.tag})` }))}
-                   value={maintAsset}
-                   onChange={setMaintAsset}
-                 />
-               </div>
+              <div>
+                <label className="label">Select Affected Asset</label>
+                <select 
+                  required value={maintAsset} onChange={(e) => setMaintAsset(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Search asset...</option>
+                  {assets.map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>
+                  ))}
+                </select>
+              </div>
 
-               <div className="relative">
-                 <AnimatedSelect
-                   label="Task Priority"
-                   options={[
-                     { value: 'Low',      label: 'Low' },
-                     { value: 'Medium',   label: 'Medium' },
-                     { value: 'High',     label: 'High' },
-                     { value: 'Critical', label: 'Critical' },
-                   ]}
-                   value={maintPriority}
-                   onChange={setMaintPriority}
-                 />
-               </div>
+              <div>
+                <label className="label">Task Priority</label>
+                <select 
+                  value={maintPriority} onChange={(e) => setMaintPriority(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Critical">Critical</option>
+                </select>
+              </div>
 
               <div>
                 <label className="label">Issue Description</label>
@@ -421,8 +418,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <RippleButton type="button" variant="secondary" onClick={() => setShowRequestModal(false)}>Cancel</RippleButton>
-                <RippleButton type="submit" variant="primary">Raise Ticket</RippleButton>
+                <button type="button" onClick={() => setShowRequestModal(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary">Raise Ticket</button>
               </div>
             </motion.form>
           </div>
@@ -449,20 +446,22 @@ const Maintenance = ({ user }) => {
               </div>
               <p className="text-sm text-gray-500 mb-2">Assign a qualified specialist to this repair task.</p>
 
-              <div className="relative">
-                <AnimatedSelect
-                  label="Select Technician"
-                  required
-                  placeholder="Select Tech..."
-                  options={employees.filter(e => e.role !== 'Employee').map(emp => ({ value: String(emp.id), label: `${emp.name} (${emp.role})` }))}
-                  value={assignTech}
-                  onChange={setAssignTech}
-                />
+              <div>
+                <label className="label">Select Technician</label>
+                <select 
+                  required value={assignTech} onChange={(e) => setAssignTech(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Select Tech...</option>
+                  {employees.filter(e => e.role !== 'Employee').map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <RippleButton type="button" variant="secondary" onClick={() => setAssigningReq(null)}>Cancel</RippleButton>
-                <RippleButton type="submit" variant="primary">Confirm Assignment</RippleButton>
+                <button type="button" onClick={() => setAssigningReq(null)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary">Confirm Assignment</button>
               </div>
             </motion.form>
           </div>
@@ -499,8 +498,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <RippleButton type="button" variant="secondary" onClick={() => setResolvingReq(null)}>Cancel</RippleButton>
-                <RippleButton type="submit" variant="primary">Complete Resolution</RippleButton>
+                <button type="button" onClick={() => setResolvingReq(null)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary bg-green-600 hover:bg-green-700 text-white border-transparent">Resolve Ticket</button>
               </div>
             </motion.form>
           </div>
@@ -537,8 +536,8 @@ const Maintenance = ({ user }) => {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
-                <RippleButton type="button" variant="secondary" onClick={() => setRejectingReq(null)}>Cancel</RippleButton>
-                <RippleButton type="submit" variant="danger">Reject Request</RippleButton>
+                <button type="button" onClick={() => setRejectingReq(null)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-danger">Reject Request</button>
               </div>
             </motion.form>
           </div>
@@ -549,4 +548,3 @@ const Maintenance = ({ user }) => {
 };
 
 export default Maintenance;
-

@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { Key, Mail, ShieldAlert, Eye, EyeOff, Package, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import GravityStars from '../components/ui/GravityStars';
-import RippleButton from '../components/ui/RippleButton';
+import AssetTagChip from '../components/AssetTagChip';
 import { useToast } from '../components/Toast';
 
 const Login = ({ setUser }) => {
@@ -16,6 +15,61 @@ const Login = ({ setUser }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  const handleGoogleLoginResponse = async (response) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', {
+        credential: response.credential
+      });
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('refresh_token', res.data.refresh_token);
+      localStorage.setItem('user', JSON.stringify({
+        email: res.data.email,
+        name: res.data.name,
+        role: res.data.role,
+        id: res.data.id
+      }));
+      setUser({
+        email: res.data.email,
+        name: res.data.name,
+        role: res.data.role,
+        id: res.data.id
+      });
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Google authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeGoogle = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "148457849994-fqjcj2hdmops0t4flvoh27aa7hopdmpi.apps.googleusercontent.com",
+          callback: handleGoogleLoginResponse
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("googleSignInDiv"),
+          { theme: "outline", size: "large", width: "100%" }
+        );
+      }
+    };
+
+    initializeGoogle();
+
+    const interval = setInterval(() => {
+      if (window.google) {
+        initializeGoogle();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,148 +103,213 @@ const Login = ({ setUser }) => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#F9FAFB] flex items-center justify-center p-4">
-      {/* Premium subtle star field background */}
-      <GravityStars starCount={50} starColor="#7F56D9" className="z-0 opacity-40" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative z-10 w-full max-w-[440px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col gap-6"
-      >
-        {/* Header */}
-        <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Log in to your account
-          </h1>
-          <p className="text-sm text-gray-500">
-            Welcome back! Please enter your details.
-          </p>
+    <div className="min-h-screen bg-surface flex relative overflow-hidden" data-no-transition>
+      
+      {/* Brand Panel (Left) */}
+      <div className="hidden lg:flex w-[55%] bg-brand p-12 flex-col justify-between relative overflow-hidden">
+        {/* Animated Gradient Mesh */}
+        <div className="mesh-bg">
+          <motion.div 
+            animate={{ x: [0, 50, 0], y: [0, -50, 0], scale: [1, 1.2, 1] }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="mesh-blob bg-[#14B8A6] w-96 h-96 top-0 left-0" 
+          />
+          <motion.div 
+            animate={{ x: [0, -60, 0], y: [0, 60, 0], scale: [1, 1.5, 1] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="mesh-blob bg-[#0D5D57] w-[30rem] h-[30rem] bottom-0 right-0" 
+          />
         </div>
 
-        {/* Signup / Login Tab Group */}
-        <div className="grid grid-cols-2 p-1 bg-gray-50 rounded-lg border border-gray-200/50">
-          <Link
-            to="/signup"
-            className="py-2 text-sm font-semibold text-gray-500 hover:text-gray-900 text-center rounded-md transition-colors"
+        <div className="relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="flex items-center gap-3 text-white mb-12"
           >
-            Sign up
-          </Link>
-          <div className="py-2 text-sm font-semibold text-gray-900 text-center bg-white rounded-md shadow-sm border border-gray-200/40">
-            Log in
-          </div>
+            <Package className="w-10 h-10" />
+            <span className="text-3xl font-bold tracking-tight font-sans">AssetFlow</span>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <h2 className="text-5xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+              Enterprise Asset &<br />Resource Management
+            </h2>
+            <p className="text-[#CCFBF1] text-lg max-w-lg leading-relaxed font-medium">
+              Streamline allocations, track maintenance, and manage your organization's physical resources from a single unified platform.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-12 flex gap-8"
+          >
+            <div className="flex flex-col">
+              <span className="text-3xl font-bold text-white">99.9%</span>
+              <span className="text-sm font-semibold text-[#14B8A6] uppercase tracking-wider">Uptime</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-3xl font-bold text-white">10k+</span>
+              <span className="text-sm font-semibold text-[#14B8A6] uppercase tracking-wider">Assets Tracked</span>
+            </div>
+          </motion.div>
+        </div>
+        
+        {/* Floating Asset Tags */}
+        <div className="absolute top-1/4 right-12 flex flex-col gap-6 opacity-90 transform rotate-12 z-10 pointer-events-none">
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, delay: 0.4, type: "spring" }}
+          >
+            <div className="bg-[#0F172A]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-[#2DD4BF]/30 text-[#2DD4BF] font-mono text-lg font-bold shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)]">
+              [ AF-0114 ]
+            </div>
+          </motion.div>
+          
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, delay: 0.6, type: "spring" }}
+            className="translate-x-16"
+          >
+            <div className="bg-[#0F172A]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-[#2DD4BF]/30 text-[#2DD4BF] font-mono text-base font-bold shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)]">
+              [ AF-0062 ]
+            </div>
+          </motion.div>
+          
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, delay: 0.8, type: "spring" }}
+            className="-translate-x-8"
+          >
+            <div className="bg-[#0F172A]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-[#2DD4BF]/30 text-[#2DD4BF] font-mono text-sm font-bold shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)]">
+              [ AF-0897 ]
+            </div>
+          </motion.div>
         </div>
 
-        {/* Error Alert */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-2.5 p-3 bg-red-50 border border-red-100 text-rust text-xs rounded-lg font-medium">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="relative z-10 text-[#CCFBF1]/70 text-sm font-medium">
+          © {new Date().getFullYear()} AssetFlow Systems Inc.
+        </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7F56D9] focus:border-transparent transition-all"
-            />
+      {/* Form Panel (Right) */}
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 z-10 bg-surface">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="w-full max-w-md card glass p-8 sm:p-10 flex flex-col gap-8"
+        >
+          <div className="flex flex-col gap-2 text-center lg:text-left">
+            <h1 className="text-3xl font-extrabold tracking-tight text-ink">
+              Welcome back
+            </h1>
+            <p className="text-sm text-secondary font-medium">Sign in to your enterprise account</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7F56D9] focus:border-transparent transition-all pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(prev => !prev)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-700 focus:outline-none"
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="overflow-hidden"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl flex items-center gap-3">
+                  <ShieldAlert className="w-5 h-5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div>
+              <label className="label">Work Email</label>
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 group-focus-within:text-brand transition-colors">
+                  <Mail className="w-5 h-5" />
+                </span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="input-field pl-11 shadow-sm"
+                />
+              </div>
             </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="label !mb-0">Password</label>
+                <Link to="/forgot-password" className="text-xs font-semibold text-brand hover:underline">Forgot password?</Link>
+              </div>
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 group-focus-within:text-brand transition-colors">
+                  <Key className="w-5 h-5" />
+                </span>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="input-field pl-11 pr-11 shadow-sm font-mono text-lg tracking-wider placeholder:font-sans placeholder:tracking-normal placeholder:text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-ink focus:outline-none transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full h-12 mt-4 text-base shadow-brand"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-100"></div>
+            <span className="flex-shrink mx-4 text-slate-400 text-xs font-semibold">Or continue with</span>
+            <div className="flex-grow border-t border-slate-100"></div>
           </div>
 
-          {/* Remember & Forgot Row */}
-          <div className="flex items-center justify-between text-xs">
-            <label className="flex items-center gap-2 text-gray-600 font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-[#7F56D9] focus:ring-[#7F56D9]"
-              />
-              Remember for 30 days
-            </label>
-            <Link to="/forgot-password" className="text-xs font-semibold text-[#7F56D9] hover:text-[#693FD0] hover:underline">
-              Forgot password
+          <div id="googleSignInDiv" className="w-full flex justify-center"></div>
+
+          <div className="text-center text-sm text-slate-400 pt-4 border-t border-slate-100">
+            <span>New here? </span>
+            <Link to="/signup" className="text-brand hover:text-brand-deep font-bold transition">
+              Create an account
             </Link>
           </div>
-
-          {/* Submit */}
-          <RippleButton
-            type="submit"
-            variant="purple"
-            size="lg"
-            disabled={loading}
-            className="w-full mt-1"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Signing in...
-              </span>
-            ) : 'Sign in'}
-          </RippleButton>
-        </form>
-
-        {/* Google SSO Button */}
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-sm font-semibold text-gray-700 rounded-lg shadow-sm transition-colors"
-        >
-          {/* Colored Google logo SVG */}
-          <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-          </svg>
-          Sign in with Google
-        </button>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-gray-500">
-          Don't have an account?{' '}
-          <Link to="/signup" className="font-semibold text-[#7F56D9] hover:text-[#693FD0] hover:underline">
-            Sign up
-          </Link>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };
