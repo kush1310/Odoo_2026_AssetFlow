@@ -4,15 +4,15 @@ import { motion } from 'framer-motion';
 const AssetTagChip = ({ tag, className = '' }) => {
   return (
     <motion.div
-      className={`asset-tag inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-mono-bg text-white shadow-sm border border-transparent ${className}`}
+      className={`asset-tag ${className}`}
       whileHover="hover"
       initial="initial"
     >
       <motion.span 
-        className="text-brand-deep mr-1 font-bold"
+        className="opacity-50 mr-1"
         variants={{
           initial: { x: 0, opacity: 0.5 },
-          hover: { x: -2, opacity: 1 }
+          hover: { x: -2, opacity: 0.8 }
         }}
         transition={{ duration: 0.2 }}
       >
@@ -22,10 +22,10 @@ const AssetTagChip = ({ tag, className = '' }) => {
       <span>{tag}</span>
       
       <motion.span 
-        className="text-brand-deep ml-1 font-bold"
+        className="opacity-50 ml-1"
         variants={{
           initial: { x: 0, opacity: 0.5 },
-          hover: { x: 2, opacity: 1 }
+          hover: { x: 2, opacity: 0.8 }
         }}
         transition={{ duration: 0.2 }}
       >
