@@ -50,6 +50,14 @@ const AssetDirectory = ({ user }) => {
   const [maintHistory, setMaintHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Sell Asset state
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [sellPrice, setSellPrice] = useState('');
+  const [sellBuyer, setSellBuyer] = useState('');
+  const [sellNotes, setSellNotes] = useState('');
+  const [selling, setSelling] = useState(false);
+  const [sellError, setSellError] = useState('');
+
   const loadData = async () => {
     try {
       const [resAssets, resCats] = await Promise.all([
@@ -96,6 +104,39 @@ const AssetDirectory = ({ user }) => {
       loadData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Asset registration failed.", "error");
+    }
+  };
+
+  const handleSellAsset = async (e) => {
+    e.preventDefault();
+    setSellError('');
+    if (!sellPrice || parseFloat(sellPrice) < 0) {
+      setSellError("Please enter a valid selling price.");
+      return;
+    }
+    if (!sellBuyer.trim()) {
+      setSellError("Please enter the buyer's name.");
+      return;
+    }
+    setSelling(true);
+    try {
+      await api.post(`/assets/${selectedAsset.id}/sell`, {
+        sell_price: parseFloat(sellPrice),
+        buyer: sellBuyer.trim(),
+        notes: sellNotes.trim() || null
+      });
+      addToast("Asset marked as sold successfully!", "success");
+      setShowSellModal(false);
+      setSelectedAsset(null); // Close detail drawer
+      setSellPrice('');
+      setSellBuyer('');
+      setSellNotes('');
+      loadData(); // Reload directory
+    } catch (err) {
+      setSellError(err.response?.data?.detail || "Disposal request failed.");
+      addToast(err.response?.data?.detail || "Failed to sell asset.", "error");
+    } finally {
+      setSelling(false);
     }
   };
 
@@ -523,6 +564,15 @@ const AssetDirectory = ({ user }) => {
                   <button className="flex-1 btn btn-secondary text-brand hover:bg-brand/5 border-brand/20">
                     Edit Asset
                   </button>
+                  {selectedAsset.status !== 'Disposed' && selectedAsset.status !== 'Allocated' && (
+                    <button 
+                      onClick={() => setShowSellModal(true)}
+                      className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 flex items-center justify-center gap-1.5 px-4"
+                    >
+                      <DollarSign className="w-4.5 h-4.5" />
+                      Sell Asset
+                    </button>
+                  )}
                   <button className="btn btn-secondary text-rust hover:bg-red-50 border-red-200">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -530,6 +580,75 @@ const AssetDirectory = ({ user }) => {
               )}
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* SELL ASSET MODAL */}
+      <AnimatePresence>
+        {showSellModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setShowSellModal(false)}
+            />
+            <motion.form 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onSubmit={handleSellAsset} 
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-2xl z-55"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-lg text-ink flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" /> Sell Asset: {selectedAsset?.name}
+                </h3>
+                <button type="button" onClick={() => setShowSellModal(false)} className="text-gray-400 hover:text-ink"><X className="w-5 h-5"/></button>
+              </div>
+
+              {sellError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-rust text-xs font-semibold flex gap-2 items-start">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p>{sellError}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="label">Selling Price ($)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><DollarSign className="w-4 h-4"/></span>
+                  <input 
+                    type="number" step="0.01" required value={sellPrice} onChange={(e) => {setSellPrice(e.target.value); setSellError('');}}
+                    placeholder="0.00" className="input-field pl-9"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Buyer Name</label>
+                <input 
+                  type="text" required value={sellBuyer} onChange={(e) => {setSellBuyer(e.target.value); setSellError('');}}
+                  placeholder="e.g. John Doe / External Vendor" className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="label">Sale / Disposal Notes</label>
+                <textarea 
+                  value={sellNotes} onChange={(e) => setSellNotes(e.target.value)}
+                  placeholder="e.g. Asset sold as surplus hardware..." rows="3"
+                  className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
+                <button type="button" onClick={() => setShowSellModal(false)} className="btn btn-secondary">Cancel</button>
+                <button type="submit" className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600" disabled={selling}>
+                  {selling ? "Selling..." : "Confirm Sale"}
+                </button>
+              </div>
+            </motion.form>
+          </div>
         )}
       </AnimatePresence>
     </div>

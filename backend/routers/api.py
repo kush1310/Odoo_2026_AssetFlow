@@ -329,6 +329,41 @@ def get_public_departments(db: Session = Depends(get_db)):
     return [{"id": d.id, "name": d.name, "code": d.code} for d in depts]
 
 
+@router.put("/auth/profile", response_model=schemas.UserResponse)
+def update_profile(
+    profile_in: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    current_user.name = profile_in.name
+    db.commit()
+    db.refresh(current_user)
+    log_activity(db, current_user.id, "UPDATE_PROFILE", "users", current_user.id,
+                 f"User updated profile name to {profile_in.name}")
+    return current_user
+
+
+@router.put("/auth/change-password")
+def change_password(
+    req: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not auth.verify_password(req.current_password, current_user.password_hash):
+        raise HTTPException(400, "Incorrect current password.")
+    
+    current_user.password_hash = auth.get_password_hash(req.new_password)
+    current_user.token_version += 1 # Invalidate other active sessions
+    current_user.failed_login_attempts = 0
+    current_user.locked_until = None
+    db.commit()
+    
+    log_activity(db, current_user.id, "CHANGE_PASSWORD", "users", current_user.id,
+                 "User changed their password; sessions revoked")
+    return {"message": "Password changed successfully."}
+
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. ORGANIZATION SETUP (Admin only)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -517,7 +552,7 @@ def get_assets(
         allocated_ids = db.query(models.Allocation.asset_id).filter(
             models.Allocation.employee_id == current_user.id,
             models.Allocation.state.in_(["approved", "overdue"])
-        ).subquery()
+        ).scalar_subquery()
         query = query.filter(
             or_(models.Asset.id.in_(allocated_ids), models.Asset.shared_flag == True)
         )
@@ -528,7 +563,7 @@ def get_assets(
                 models.Allocation.employee_id == current_user.id
             ),
             models.Allocation.state.in_(["approved", "overdue"])
-        ).subquery()
+        ).scalar_subquery()
         query = query.filter(
             or_(models.Asset.id.in_(allocated_ids), models.Asset.shared_flag == True)
         )
@@ -581,6 +616,40 @@ def update_asset(asset_id: int, asset_in: schemas.AssetUpdate,
     log_activity(db, current_user.id, "UPDATE_ASSET", "assets", asset.id,
                  f"Updated asset {asset.tag}")
     return asset
+
+
+@router.post("/assets/{asset_id}/sell", response_model=schemas.AssetResponse)
+def sell_asset(
+    asset_id: int,
+    sell_in: schemas.AssetSellRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(["Admin", "Asset Manager"]))
+):
+    asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(404, "Asset not found.")
+    
+    if asset.status == "Disposed":
+        raise HTTPException(400, "Asset has already been sold/disposed.")
+        
+    if asset.status == "Allocated":
+        raise HTTPException(400, "Cannot sell an asset that is currently allocated. Please check it in first.")
+        
+    asset.status = "Disposed"
+    db.commit()
+    db.refresh(asset)
+    
+    log_activity(
+        db, 
+        current_user.id, 
+        "SELL_ASSET", 
+        "assets", 
+        asset.id,
+        f"Sold asset {asset.tag} to {sell_in.buyer} for ${sell_in.sell_price:.2f}. Notes: {sell_in.notes or 'None'}"
+    )
+    
+    return asset
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════

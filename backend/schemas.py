@@ -395,3 +395,20 @@ class ActivityLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Profile Management Schemas ───────────────────────────────────────────────
+
+class UserProfileUpdate(BaseModel):
+    name: str = Field(..., min_length=2)
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+class AssetSellRequest(BaseModel):
+    sell_price: float = Field(..., ge=0.0)
+    buyer: str
+    notes: Optional[str] = None
+

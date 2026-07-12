@@ -17,6 +17,7 @@ import Audits from './pages/Audits';
 import Reports from './pages/Reports';
 import Logs from './pages/Logs';
 import Help from './pages/Help';
+import Profile from './pages/Profile';
 
 // Helper component to guard private routes
 const PrivateRoute = ({ children, allowedRoles, user }) => {
@@ -73,6 +74,7 @@ function App() {
                       <Route path="/allocations" element={<Allocations user={user} />} />
                       <Route path="/bookings" element={<Bookings user={user} />} />
                       <Route path="/maintenance" element={<Maintenance user={user} />} />
+                      <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
                       
                       {/* Scope restricted routes */}
                       <Route 

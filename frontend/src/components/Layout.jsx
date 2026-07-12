@@ -89,6 +89,7 @@ const Layout = ({ children, user, setUser }) => {
     { name: 'Audits', path: '/audits', icon: ClipboardCheck, roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Reports', path: '/reports', icon: BarChart2, roles: ['Admin', 'Asset Manager', 'Department Head'] },
     { name: 'Activity Logs', path: '/logs', icon: Activity, roles: ['Admin'] },
+    { name: 'My Profile', path: '/profile', icon: UserIcon, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
   ];
 
   const allowedItems = navItems.filter(item => item.roles.includes(user?.role));
@@ -191,13 +192,15 @@ const Layout = ({ children, user, setUser }) => {
 
           {/* Profile user */}
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex flex-col text-right">
-              <span className="text-sm font-semibold text-ink leading-tight">{user?.name}</span>
-              <span className="text-xs font-medium tracking-wide text-brand">{user?.role}</span>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20">
-              {user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />}
-            </div>
+            <Link to="/profile" className="flex items-center gap-3 hover:opacity-80 transition group">
+              <div className="hidden md:flex flex-col text-right">
+                <span className="text-sm font-semibold text-ink leading-tight group-hover:text-brand transition-colors">{user?.name}</span>
+                <span className="text-xs font-medium tracking-wide text-brand">{user?.role}</span>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold shadow-sm ring-1 ring-brand/20 group-hover:ring-brand transition-all">
+                {user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />}
+              </div>
+            </Link>
             <button 
               onClick={handleLogout}
               className="p-2 ml-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"

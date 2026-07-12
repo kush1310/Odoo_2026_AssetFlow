@@ -230,12 +230,12 @@ const Allocations = ({ user }) => {
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <AssetTagChip tag={assetObj?.tag || 'UNK'} />
-                              <span className="text-sm font-bold text-ink">{assetObj?.name}</span>
+                              <AssetTagChip tag={alloc.asset_tag || 'UNK'} />
+                              <span className="text-sm font-bold text-ink">{alloc.asset_name}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-gray-600">
                               <User className="w-3.5 h-3.5" />
-                              Custodian: <span className="font-medium text-ink">{empObj?.name}</span>
+                              Custodian: <span className="font-medium text-ink">{alloc.employee_name}</span>
                             </div>
                           </div>
                           {user?.role !== 'Employee' && (
@@ -316,19 +316,19 @@ const Allocations = ({ user }) => {
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
-                              <AssetTagChip tag={assetObj?.tag || 'UNK'} />
-                              <span className="text-sm font-bold text-ink">{assetObj?.name}</span>
+                              <AssetTagChip tag={trans.asset_tag || 'UNK'} />
+                              <span className="text-sm font-bold text-ink">{trans.asset_name}</span>
                             </div>
                             
                             <div className="flex items-center gap-3 mt-1 bg-white border border-line rounded-lg p-2.5 shadow-sm">
                               <div className="flex flex-col">
                                 <span className="text-[10px] text-gray-500 font-semibold uppercase">From</span>
-                                <span className="text-xs font-medium text-ink">{fromObj?.name || 'Unknown'}</span>
+                                <span className="text-xs font-medium text-ink">{trans.source_holder_name || 'Unknown'}</span>
                               </div>
                               <ArrowRight className="w-4 h-4 text-gray-300 mx-1" />
                               <div className="flex flex-col">
                                 <span className="text-[10px] text-brand font-semibold uppercase">To Recipient</span>
-                                <span className="text-xs font-medium text-ink">{toObj?.name || 'Unknown'}</span>
+                                <span className="text-xs font-medium text-ink">{trans.target_holder_name || 'Unknown'}</span>
                               </div>
                             </div>
                             
