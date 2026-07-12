@@ -182,14 +182,14 @@ const OrgSetup = () => {
             >
               {activeTab === 'departments' && (
                 <div className="flex flex-col gap-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <h3 className="font-bold text-lg text-ink">Department Directory</h3>
                     <button 
                       onClick={() => setShowDeptModal(true)}
-                      className="btn btn-primary"
+                      className="btn btn-primary w-full sm:w-auto flex items-center justify-center"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Department
+                      <Plus className="w-4 h-4 mr-2 shrink-0" />
+                      <span>Create Department</span>
                     </button>
                   </div>
 
@@ -236,14 +236,14 @@ const OrgSetup = () => {
 
               {activeTab === 'categories' && (
                 <div className="flex flex-col gap-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <h3 className="font-bold text-lg text-ink">Asset Categories</h3>
                     <button 
                       onClick={() => setShowCatModal(true)}
-                      className="btn btn-primary"
+                      className="btn btn-primary w-full sm:w-auto flex items-center justify-center"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Category
+                      <Plus className="w-4 h-4 mr-2 shrink-0" />
+                      <span>Create Category</span>
                     </button>
                   </div>
 
@@ -273,14 +273,14 @@ const OrgSetup = () => {
 
               {activeTab === 'employees' && (
                 <div className="flex flex-col gap-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <h3 className="font-bold text-lg text-ink">Employee Directory & Access</h3>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-64">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input 
                         type="text" 
                         placeholder="Search employees..." 
-                        className="input-field pl-9 w-64"
+                        className="input-field pl-9 w-full"
                       />
                     </div>
                   </div>
@@ -315,26 +315,28 @@ const OrgSetup = () => {
                                 {emp.status}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-right flex items-center justify-end gap-2">
-                              <button 
-                                onClick={() => { setPromotionUser(emp); setPromoteRole(emp.role); }}
-                                className="btn btn-secondary px-2.5 py-1.5 text-xs"
-                                title="Change Role"
-                              >
-                                <UserCog className="w-4 h-4 mr-1" />
-                                Role
-                              </button>
-                              <button 
-                                onClick={() => toggleUserStatus(emp)}
-                                className={`btn px-2.5 py-1.5 text-xs border
-                                  ${emp.status === 'Active'
-                                    ? 'bg-white text-rust border-red-200 hover:bg-red-50'
-                                    : 'bg-white text-brand border-brand/20 hover:bg-brand/5'}
-                                `}
-                              >
-                                <Power className="w-4 h-4 mr-1" />
-                                {emp.status === 'Active' ? 'Deactivate' : 'Activate'}
-                              </button>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={() => { setPromotionUser(emp); setPromoteRole(emp.role); }}
+                                  className="btn btn-secondary px-2.5 py-1.5 text-xs inline-flex items-center whitespace-nowrap"
+                                  title="Change Role"
+                                >
+                                  <UserCog className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                  <span>Role</span>
+                                </button>
+                                <button 
+                                  onClick={() => toggleUserStatus(emp)}
+                                  className={`btn px-2.5 py-1.5 text-xs border inline-flex items-center whitespace-nowrap
+                                    ${emp.status === 'Active'
+                                      ? 'bg-white text-rust border-red-200 hover:bg-red-50'
+                                      : 'bg-white text-brand border-brand/20 hover:bg-brand/5'}
+                                  `}
+                                >
+                                  <Power className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                  <span>{emp.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -400,7 +402,7 @@ const OrgSetup = () => {
                 <select 
                   value={deptParent} 
                   onChange={(e) => setDeptParent(e.target.value)}
-                  className="input-field"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none hover:border-gray-300"
                 >
                   <option value="">No Parent (Top Level)</option>
                   {departments.map(d => (
@@ -414,7 +416,7 @@ const OrgSetup = () => {
                 <select 
                   value={deptManager} 
                   onChange={(e) => setDeptManager(e.target.value)}
-                  className="input-field"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none hover:border-gray-300"
                 >
                   <option value="">No Manager Assigned</option>
                   {employees.map(emp => (
@@ -511,7 +513,7 @@ const OrgSetup = () => {
                 <select 
                   value={promoteRole} 
                   onChange={(e) => setPromoteRole(e.target.value)}
-                  className="input-field"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold shadow-sm transition-all focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none hover:border-gray-300"
                 >
                   <option value="Employee">Employee (Default)</option>
                   <option value="Department Head">Department Head</option>

@@ -8,7 +8,9 @@ import {
   Play, 
   CheckCircle2, 
   X,
-  AlertTriangle
+  AlertTriangle,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { HandWrittenTitle } from '../components/ui/HandWrittenTitle';
@@ -125,12 +127,18 @@ const Maintenance = ({ user }) => {
 
   const [assigningReq, setAssigningReq] = useState(null);
   const [assignTech, setAssignTech] = useState('');
+  const [assignTime, setAssignTime] = useState('');
+  const [assignDuration, setAssignDuration] = useState('60');
 
   const [resolvingReq, setResolvingReq] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [partsReplaced, setPartsReplaced] = useState('');
 
   const [rejectingReq, setRejectingReq] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  const [customExtendId, setCustomExtendId] = useState(null);
+  const [customExtendMins, setCustomExtendMins] = useState('');
 
   const loadData = async () => {
     try {
@@ -187,11 +195,15 @@ const Maintenance = ({ user }) => {
     e.preventDefault();
     try {
       await api.post(`/maintenance/${assigningReq.id}/assign`, {
-        technician_id: parseInt(assignTech)
+        technician_id: parseInt(assignTech),
+        scheduled_time: new Date(assignTime).toISOString(),
+        duration_minutes: parseInt(assignDuration) || 60
       });
       addToast("Technician assigned to task successfully.", "success");
       setAssigningReq(null);
       setAssignTech('');
+      setAssignTime('');
+      setAssignDuration('60');
       loadData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Assignment failed.", "error");
@@ -212,14 +224,30 @@ const Maintenance = ({ user }) => {
     e.preventDefault();
     try {
       await api.post(`/maintenance/${resolvingReq.id}/resolve`, {
-        resolution_notes: resolutionNotes
+        resolution_notes: resolutionNotes,
+        parts_replaced: partsReplaced
       });
       addToast("Ticket resolved. Asset returned to Available pool.", "success");
       setResolvingReq(null);
       setResolutionNotes('');
+      setPartsReplaced('');
       loadData();
     } catch (err) {
       addToast(err.response?.data?.detail || "Resolution submission failed.", "error");
+    }
+  };
+
+  const extendTaskSchedule = async (id, minutes) => {
+    try {
+      await api.post(`/maintenance/${id}/extend`, {
+        extension_minutes: parseInt(minutes)
+      });
+      addToast(`Extended scheduled visit by ${minutes} minutes. Subsequent tasks shifted forward.`, "success");
+      setCustomExtendId(null);
+      setCustomExtendMins('');
+      loadData();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Extension failed.", "error");
     }
   };
 
@@ -316,6 +344,186 @@ const Maintenance = ({ user }) => {
           </RippleButton>
         </div>
       </div>
+
+      {/* TECHNICIAN VISITS SCHEDULER PORTAL */}
+      {!loading && (
+        <div className="bg-white border border-line rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-line pb-4 gap-2">
+            <div className="flex flex-col gap-0.5">
+              <h3 className="font-bold text-base text-ink flex items-center gap-2">
+                <Clock className="w-5 h-5 text-brand" /> Technician Visits Scheduler & Shift Portal
+              </h3>
+              <p className="text-xs text-gray-500">Chronological schedule of technician visits and maintenance task times for today.</p>
+            </div>
+            <span className="text-xs font-bold bg-brand/10 text-brand px-3 py-1 rounded-full border border-brand/20">
+              Today: {new Date().toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+          </div>
+
+          {(() => {
+            const todayStr = new Date().toDateString();
+            const techVisits = requests.filter(req => {
+              const isTech = user?.role === 'Technician';
+              const isMatch = isTech ? req.technician_id === user?.id : req.technician_id !== null;
+              if (!isMatch) return false;
+              if (!req.scheduled_time) return false;
+              return new Date(req.scheduled_time).toDateString() === todayStr;
+            }).sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time));
+
+            if (techVisits.length === 0) {
+              return (
+                <div className="py-6 text-center text-gray-400 text-xs italic border border-dashed border-line rounded-xl">
+                  No maintenance visits scheduled for today.
+                </div>
+              );
+            }
+
+            return (
+              <div className="relative pl-6 border-l border-line flex flex-col gap-8 my-2">
+                {techVisits.map((req, idx) => {
+                  const assetObj = assets.find(a => a.id === req.asset_id);
+                  const techObj = employees.find(e => e.id === req.technician_id);
+                  const startTime = new Date(req.scheduled_time);
+                  const endTime = new Date(startTime.getTime() + (req.duration_minutes || 60) * 60000);
+                  
+                  const isAssigned = req.status === 'Assigned';
+                  const isInProgress = req.status === 'In Progress';
+                  const isResolved = req.status === 'Resolved';
+                  const isPendingActions = isAssigned || isInProgress;
+
+                  return (
+                    <div key={`visit-${req.id}`} className="relative flex flex-col sm:flex-row justify-between items-start gap-4 p-4 rounded-xl border border-line bg-surface/50 hover:bg-white transition-all shadow-sm">
+                      {/* Timeline dot */}
+                      <div className="absolute -left-[31px] top-7 w-4.5 h-4.5 rounded-full bg-brand border-4 border-white shadow-sm flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Time Span Badge */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-brand bg-brand/5 border border-brand/20 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-semibold">({req.duration_minutes || 60} mins)</span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border
+                            ${req.priority === 'Critical' ? 'bg-red-50 text-rust border-red-200' : ''}
+                            ${req.priority === 'High' ? 'bg-orange-50 text-orange-600 border-orange-200' : ''}
+                            ${req.priority === 'Medium' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                            ${req.priority === 'Low' ? 'bg-gray-50 text-gray-500 border-gray-200' : ''}
+                          `}>
+                            {req.priority}
+                          </span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border
+                            ${isResolved ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                            ${isInProgress ? 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse' : ''}
+                            ${isAssigned ? 'bg-amber-50 text-amber border-amber-200' : ''}
+                          `}>
+                            {req.status}
+                          </span>
+                        </div>
+
+                        {/* Asset and Ticket Information */}
+                        <div className="flex flex-col gap-1 mt-1">
+                          <span className="text-xs font-bold text-ink">
+                            {assetObj?.name || `Asset ${req.asset_id}`} ({assetObj?.tag || 'UNK'})
+                          </span>
+                          <p className="text-xs text-gray-500">Issue: "{req.issue_description}"</p>
+                          {techObj && user?.role !== 'Technician' && (
+                            <span className="text-[10px] font-semibold text-gray-400">Assigned Tech: {techObj.name}</span>
+                          )}
+                          {isResolved && req.parts_replaced && (
+                            <div className="mt-2 text-[10px] bg-green-50 text-green-800 p-2 rounded border border-green-100 font-medium">
+                              Replaced Parts: <span className="font-semibold">{req.parts_replaced}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Shift & Resolve Action Controls */}
+                      {isPendingActions && (req.technician_id === user?.id || user?.role !== 'Employee') && (
+                        <div className="flex flex-col gap-2 shrink-0 sm:items-end w-full sm:w-auto">
+                          <div className="flex gap-2">
+                            {isAssigned && (
+                              <RippleButton 
+                                type="button" 
+                                variant="primary" 
+                                size="sm" 
+                                onClick={() => startWork(req.id)}
+                              >
+                                Start Visit
+                              </RippleButton>
+                            )}
+                            {isInProgress && (
+                              <RippleButton 
+                                type="button" 
+                                variant="primary" 
+                                size="sm" 
+                                onClick={() => handleActionClick('resolve', req)}
+                              >
+                                Checkout / Resolve
+                              </RippleButton>
+                            )}
+                          </div>
+
+                          {isInProgress && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-left sm:text-right">Shift Task Time</span>
+                              <div className="flex gap-1.5 flex-wrap">
+                                <button 
+                                  onClick={() => extendTaskSchedule(req.id, 25)}
+                                  className="text-[10px] font-bold border border-line bg-white hover:bg-surface text-ink px-2.5 py-1 rounded-lg transition"
+                                >
+                                  +25 mins
+                                </button>
+                                <button 
+                                  onClick={() => extendTaskSchedule(req.id, 50)}
+                                  className="text-[10px] font-bold border border-line bg-white hover:bg-surface text-ink px-2.5 py-1 rounded-lg transition"
+                                >
+                                  +50 mins
+                                </button>
+                                {customExtendId === req.id ? (
+                                  <div className="flex gap-1 items-center">
+                                    <input 
+                                      type="number" 
+                                      min="1" 
+                                      placeholder="Mins" 
+                                      value={customExtendMins}
+                                      onChange={(e) => setCustomExtendMins(e.target.value)}
+                                      className="w-16 text-center text-xs py-1 border border-line rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        if (customExtendMins) {
+                                          extendTaskSchedule(req.id, customExtendMins);
+                                        }
+                                      }}
+                                      className="text-xs font-bold bg-brand text-white px-2 py-1 rounded-lg hover:bg-brand-deep transition"
+                                    >
+                                      Go
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button 
+                                    onClick={() => setCustomExtendId(req.id)}
+                                    className="text-[10px] font-bold border border-line bg-white hover:bg-surface text-brand px-2.5 py-1 rounded-lg transition"
+                                  >
+                                    Custom
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center flex-1">
@@ -460,6 +668,30 @@ const Maintenance = ({ user }) => {
                 />
               </div>
 
+              <div>
+                <label className="label">Scheduled Time</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={assignTime}
+                  onChange={(e) => setAssignTime(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="label">Estimated Duration (Minutes)</label>
+                <input
+                  type="number"
+                  min="5"
+                  required
+                  value={assignDuration}
+                  onChange={(e) => setAssignDuration(e.target.value)}
+                  placeholder="e.g. 60"
+                  className="input-field"
+                />
+              </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t border-line mt-2">
                 <RippleButton type="button" variant="secondary" onClick={() => setAssigningReq(null)}>Cancel</RippleButton>
                 <RippleButton type="submit" variant="primary">Confirm Assignment</RippleButton>
@@ -495,6 +727,18 @@ const Maintenance = ({ user }) => {
                   required value={resolutionNotes} onChange={(e) => setResolutionNotes(e.target.value)}
                   placeholder="Details of the resolution..." rows="4"
                   className="input-field h-auto py-3"
+                />
+              </div>
+
+              <div>
+                <label className="label">Parts Changed, Replaced, or Repaired</label>
+                <input
+                  type="text"
+                  required
+                  value={partsReplaced}
+                  onChange={(e) => setPartsReplaced(e.target.value)}
+                  placeholder="e.g. Replaced laptop battery pack, RAM sticks"
+                  className="input-field"
                 />
               </div>
 

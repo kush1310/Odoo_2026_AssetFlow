@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -76,16 +77,18 @@ const Bookings = ({ user }) => {
     e.preventDefault();
     setConflictMsg('');
 
-    const startDt = new Date(bookStart);
-    const endDt = new Date(bookEnd);
+    const startDt = new Date(bookStart + "T00:00:00");
+    const endDt = new Date(bookEnd + "T23:59:59");
 
-    if (endDt <= startDt) {
-      triggerShake("End time must be after start time.");
+    if (endDt < startDt) {
+      triggerShake("End date must be after or equal to start date.");
       return;
     }
 
-    if (startDt < new Date()) {
-      triggerShake("Start time cannot be in the past.");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (startDt < today) {
+      triggerShake("Start date cannot be in the past.");
       return;
     }
 
@@ -93,8 +96,8 @@ const Bookings = ({ user }) => {
     const localOverlap = bookings.find(b => 
       b.asset_id === parseInt(bookAsset) &&
       b.status !== 'Cancelled' &&
-      new Date(b.end_time) > startDt &&
-      new Date(b.start_time) < endDt
+      new Date(b.end_time) >= startDt &&
+      new Date(b.start_time) <= endDt
     );
 
     if (localOverlap) {
@@ -216,8 +219,9 @@ const Bookings = ({ user }) => {
                       const assetObj = assets.find(a => a.id === book.asset_id);
                       const empObj = employees.find(e => e.id === book.booked_by_id);
                       
-                      const start = new Date(book.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-                      const end = new Date(book.end_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                      const start = new Date(book.start_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                      const end = new Date(book.end_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                      const dateRange = start === end ? start : `${start} - ${end}`;
                       
                       const isOngoing = book.status === 'Ongoing';
                       
@@ -225,30 +229,34 @@ const Bookings = ({ user }) => {
                         <motion.div 
                           initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                           key={book.id} 
-                          className={`relative p-4 rounded-xl border transition group
-                            ${isOngoing ? 'bg-brand/5 border-brand/20' : 'bg-surface border-line hover:bg-gray-50'}
+                          className={`relative p-5 rounded-2xl border transition-all shadow-sm group
+                            ${isOngoing 
+                              ? 'bg-brand/[0.03] border-brand/30 shadow-brand/5' 
+                              : 'bg-white border-line hover:border-gray-300 hover:shadow-md'
+                            }
                           `}
                         >
                           {/* Dot marker */}
-                          <div className={`absolute -left-[21px] md:-left-[29px] top-5 w-3 h-3 rounded-full ring-4 ring-white
+                          <div className={`absolute -left-[21px] md:-left-[29px] top-6 w-3 h-3 rounded-full ring-4 ring-white
                             ${isOngoing ? 'bg-brand' : 'bg-gray-300'}
                           `}></div>
                           
-                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                            <div className="flex flex-col gap-1">
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div className="flex flex-col gap-1.5">
                               <div className="flex items-center gap-2">
-                                <span className={`text-xs font-bold ${isOngoing ? 'text-brand' : 'text-gray-500'}`}>
-                                  {start} - {end}
+                                <span className={`text-[11px] font-bold tracking-wide uppercase px-2 py-0.5 rounded bg-gray-50 border border-gray-200/60 ${isOngoing ? 'text-brand' : 'text-gray-500'}`}>
+                                  {dateRange}
                                 </span>
                                 {isOngoing && <span className="flex h-2 w-2 relative">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
                                   <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
                                 </span>}
                               </div>
-                              <h4 className="font-bold text-ink text-base">{assetObj?.name || `Resource ID ${book.asset_id}`}</h4>
-                              <p className="text-sm text-gray-600 italic">"{book.purpose}"</p>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                                <span className="font-semibold text-gray-700">{empObj?.name || `User ${book.booked_by_id}`}</span>
+                              <h4 className="font-bold text-ink text-lg tracking-tight">{assetObj?.name || `Resource ID ${book.asset_id}`}</h4>
+                              <p className="text-sm text-gray-500 font-medium italic">"{book.purpose}"</p>
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mt-1 uppercase tracking-wider">
+                                <span>Reserved By:</span>
+                                <span className="text-gray-700 font-bold">{empObj?.name || `User ${book.booked_by_id}`}</span>
                               </div>
                             </div>
                             
@@ -293,11 +301,11 @@ const Bookings = ({ user }) => {
 
       {/* BOOKING MODAL */}
       <AnimatePresence>
-        {showBookModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {showBookModal && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-ink/65 backdrop-blur-md"
               onClick={() => setShowBookModal(false)}
             />
             
@@ -307,7 +315,7 @@ const Bookings = ({ user }) => {
               variants={shakeVariants}
               animate={shake ? "shake" : { opacity: 1, scale: 1, y: 0 }}
               onSubmit={handleBooking} 
-              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-xl"
+              className="relative w-full max-w-md bg-white border border-line rounded-2xl p-6 flex flex-col gap-4 shadow-2xl z-10"
             >
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-lg text-ink flex items-center gap-2">
@@ -341,16 +349,16 @@ const Bookings = ({ user }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Start Time</label>
+                  <label className="label">Start Date</label>
                   <input 
-                    type="datetime-local" required value={bookStart} onChange={(e) => {setBookStart(e.target.value); setConflictMsg('');}}
+                    type="date" required value={bookStart} onChange={(e) => {setBookStart(e.target.value); setConflictMsg('');}}
                     className="input-field px-3"
                   />
                 </div>
                 <div>
-                  <label className="label">End Time</label>
+                  <label className="label">End Date</label>
                   <input 
-                    type="datetime-local" required value={bookEnd} onChange={(e) => {setBookEnd(e.target.value); setConflictMsg('');}}
+                    type="date" required value={bookEnd} onChange={(e) => {setBookEnd(e.target.value); setConflictMsg('');}}
                     className="input-field px-3"
                   />
                 </div>
@@ -370,7 +378,8 @@ const Bookings = ({ user }) => {
                 <RippleButton type="submit" variant="primary">Confirm Booking</RippleButton>
               </div>
             </motion.form>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
 

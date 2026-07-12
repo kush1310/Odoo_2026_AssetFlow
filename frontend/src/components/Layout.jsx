@@ -3,21 +3,24 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Package,
-  KeyRound,
-  CalendarDays,
-  Wrench,
-  ClipboardCheck,
-  Activity,
-  Bell,
+  Home,
+  BarChart2,
+  FolderOpen,
+  Folder,
+  PieChart,
+  Settings,
+  HelpCircle,
   LogOut,
   User as UserIcon,
   Menu,
   X,
-  Settings,
-  BarChart2,
-  HelpCircle,
+  Search,
+  ChevronDown,
+  ExternalLink,
+  ClipboardCheck,
+  Activity,
+  KeyRound,
+  Bell
 } from 'lucide-react';
 import { useToast } from './Toast';
 import NotificationStack from './ui/NotificationStack';
@@ -34,86 +37,51 @@ import {
   AlertDialogAction
 } from './ui/AlertDialog';
 
-/**
- * NavLink
- *
- * Renders a single navigation anchor in the notch bar.
- * Highlights with brand color when the current route matches the link's path.
- *
- * @param  {string}  to        - React Router destination path
- * @param  {React.ComponentType} icon - Lucide icon component
- * @param  {string}  label     - Display label
- * @param  {boolean} isActive  - Whether this link matches the current route
- * @param  {Function} onClick  - Optional click handler (used to close mobile menu)
- * @returns {JSX.Element}
- */
-const NavLink = ({ to, icon: Icon, label, isActive, onClick }) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className={`group flex items-center gap-1.5 text-sm font-medium transition-colors whitespace-nowrap px-1 py-0.5 rounded
-      ${isActive
-        ? 'text-brand font-semibold'
-        : 'text-gray-500 hover:text-ink'
-      }`}
-  >
-    <Icon className={`w-4 h-4 transition-opacity ${isActive ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`} />
-    <span>{label}</span>
-    {isActive && (
-      <motion.span
-        layoutId="nav-dot"
-        className="ml-0.5 w-1 h-1 rounded-full bg-brand"
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      />
-    )}
-  </Link>
-);
-
-/**
- * Layout
- *
- * Application shell using a notch-style top navigation bar.
- * The notch floats at the top with curved SVG corner joints connecting it
- * to the page background. All navigation, user actions, and notifications
- * live inside the notch. A slide-down mobile drawer handles small screens.
- *
- * @param  {React.ReactNode} children   - Page content rendered below the notch
- * @param  {object}          user       - Current authenticated user (id, name, role)
- * @param  {Function}        setUser    - Setter to clear auth state on logout
- * @returns {JSX.Element}
- */
 const Layout = ({ children, user, setUser }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [foldersOpen, setFoldersOpen] = useState(true);
+  
   const { addToast } = useToast();
 
-  // -----------------------------------------------------------------------
-  // Notifications polling (every 10 seconds)
-  // -----------------------------------------------------------------------
-  const fetchNotifications = async () => {
-    try {
-      if (!user) return;
-      const res = await api.get('/notifications');
-      setNotifications(res.data);
-    } catch (err) {
-      console.error('Failed to fetch notifications', err);
-    }
-  };
-
   useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        if (!user) return;
+        const res = await api.get('/notifications');
+        setNotifications(res.data);
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+
     if (user) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 10000);
+      loadNotifications();
+      const interval = setInterval(loadNotifications, 10000);
       return () => clearInterval(interval);
     }
   }, [user]);
 
-  // Close notification dropdown on outside click
+  // Focus search input on Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Close notifications on click outside
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -124,14 +92,6 @@ const Layout = ({ children, user, setUser }) => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
-
-  // -----------------------------------------------------------------------
-  // Auth actions
-  // -----------------------------------------------------------------------
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -140,9 +100,6 @@ const Layout = ({ children, user, setUser }) => {
     navigate('/login');
   };
 
-  // -----------------------------------------------------------------------
-  // Notification actions
-  // -----------------------------------------------------------------------
   const markAsRead = async (id) => {
     try {
       await api.post(`/notifications/${id}/read`);
@@ -161,319 +118,438 @@ const Layout = ({ children, user, setUser }) => {
     }
   };
 
-  // -----------------------------------------------------------------------
-  // Navigation items — split into left and right groups for the notch
-  // -----------------------------------------------------------------------
-  const allNavItems = [
-    { name: 'Dashboard',           path: '/',            icon: LayoutDashboard, roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-    { name: 'Org Setup',           path: '/org-setup',   icon: Settings,        roles: ['Admin'] },
-    { name: 'Assets',              path: '/assets',      icon: Package,         roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-    { name: 'Allocations',         path: '/allocations', icon: KeyRound,        roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-    { name: 'Bookings',            path: '/bookings',    icon: CalendarDays,    roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-    { name: 'Maintenance',         path: '/maintenance', icon: Wrench,          roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-    { name: 'Audits',              path: '/audits',      icon: ClipboardCheck,  roles: ['Admin', 'Asset Manager', 'Department Head'] },
-    { name: 'Reports',             path: '/reports',     icon: BarChart2,       roles: ['Admin', 'Asset Manager', 'Department Head'] },
-    { name: 'Logs',                path: '/logs',        icon: Activity,        roles: ['Admin'] },
-    { name: 'Help',                path: '/help',        icon: HelpCircle,      roles: ['Admin', 'Asset Manager', 'Department Head', 'Employee'] },
-  ];
-
-  const allowedItems = allNavItems.filter(item => item.roles.includes(user?.role));
-
-  // Split allowed items roughly in half: left side | right side
-  const midpoint = Math.ceil(allowedItems.length / 2);
-  const leftItems  = allowedItems.slice(0, midpoint);
-  const rightItems = allowedItems.slice(midpoint);
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/assets?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.read_status).length;
 
-  // -----------------------------------------------------------------------
-  // Render
-  // -----------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-surface font-sans text-ink">
+    <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans text-ink">
 
       {/* ================================================================
-          NOTCH NAVBAR
-          Structure: [Left bar] [Left corner] [Center notch] [Right corner] [Right bar]
+          1. SINGLE SIDEBAR - Desktop Viewports (Matches User Image)
           ================================================================ */}
-      <header className="fixed top-0 inset-x-0 z-50 h-16 flex items-stretch pointer-events-none">
-
-        {/* Left side background bar (matches page bg) */}
-        <div className="flex-1 h-10 bg-surface self-start pointer-events-none" />
-
-        {/* ── Notch pill ── */}
-        <div className="flex h-16 shrink-0 pointer-events-auto" style={{ filter: 'drop-shadow(0 4px 24px rgba(15,110,95,0.08)) drop-shadow(0 1px 4px rgba(0,0,0,0.06))' }}>
-
-          {/* Left curved corner */}
-          <div className="w-12 h-full relative shrink-0">
-            <div
-              className="absolute inset-0 bg-white border-b border-l border-line"
-              style={{ clipPath: "path('M0 0 H48 V64 C24 64 24 40 0 40 Z')" }}
+      <aside className="hidden md:flex flex-col w-64 border-r border-gray-200 bg-white h-screen sticky top-0 p-5 justify-between shrink-0 select-none">
+        
+        <div className="flex flex-col gap-6 flex-1 min-h-0">
+          
+          {/* Top Search bar with ⌘K shortcut */}
+          <form onSubmit={handleSearchSubmit} className="relative w-full shrink-0">
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-9 pr-12 text-sm focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand placeholder-gray-400 transition"
             />
-            {/* Subtle corner outline */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 48 64" fill="none">
-              <path d="M0 39.5 C24 39.5 24 63.5 48 63.5" stroke="#DFE3E9" strokeWidth="0.75" />
-            </svg>
-          </div>
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+            <kbd className="absolute right-2.5 top-2.5 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-md">
+              ⌘K
+            </kbd>
+          </form>
 
-          {/* Center notch content */}
-          <div className="bg-white border-b border-line flex items-end pb-2 px-4 md:px-6 gap-4 min-w-0 shrink-0
-                          max-w-[calc(100vw-96px)]">
-
-            {/* Desktop left nav items */}
-            <nav className="hidden lg:flex items-center gap-5 mb-1 shrink-0">
-              {leftItems.map(item => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  icon={item.icon}
-                  label={item.name}
-                  isActive={location.pathname === item.path}
-                />
-              ))}
-            </nav>
-
-            {/* Mobile hamburger (left side of notch) */}
-            <button
-              className="lg:hidden mb-1 p-1.5 rounded-md text-gray-500 hover:text-ink hover:bg-surface transition-colors"
-              onClick={() => setMobileMenuOpen(prev => !prev)}
-              aria-label="Toggle navigation menu"
+          {/* Navigation Links list */}
+          <nav className="flex flex-col gap-1 flex-1 overflow-y-auto pr-1 -mr-2 scrollbar-thin">
+            
+            {/* Dashboard Link */}
+            <Link
+              to="/"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+              <Home className="w-5 h-5 shrink-0" />
+              <span>Dashboard</span>
+            </Link>
 
-            {/* Logo — centered anchor of the notch */}
-            <div className="flex items-end justify-center shrink-0 mx-2 md:mx-4 mb-1">
-              <Link to="/" className="flex items-center gap-2 group">
-                <span className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center shadow-sm group-hover:bg-brand-deep transition-colors">
-                  <Package className="w-4 h-4 text-white" />
-                </span>
-                <span className="hidden sm:block text-sm font-bold tracking-tight text-ink">AssetFlow</span>
+            {/* Asset Directory Link */}
+            {user?.role === 'Admin' && (
+              <Link
+                to="/assets"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                  ${location.pathname === '/assets' 
+                    ? 'bg-gray-50 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                  }`}
+              >
+                <FolderOpen className="w-5 h-5 shrink-0" />
+                <span>Asset Directory</span>
               </Link>
-            </div>
+            )}
 
-            {/* Desktop right nav items */}
-            <nav className="hidden lg:flex items-center gap-5 mb-1 shrink-0">
-              {rightItems.map(item => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  icon={item.icon}
-                  label={item.name}
-                  isActive={location.pathname === item.path}
-                />
-              ))}
-            </nav>
+            {/* Custody Allocations Link */}
+            {user?.role === 'Admin' && (
+              <Link
+                to="/allocations"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                  ${location.pathname === '/allocations' 
+                    ? 'bg-gray-50 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                  }`}
+              >
+                <KeyRound className="w-5 h-5 shrink-0" />
+                <span>Custody Allocations</span>
+              </Link>
+            )}
 
-            {/* Right action group: Bell + User + Logout */}
-            <div className="flex items-center gap-1 md:gap-2 mb-1 ml-auto shrink-0 pl-3 border-l border-line">
+            {user?.role === 'Admin' && <hr className="my-2 border-gray-200" />}
 
-              {/* Notifications bell */}
-              <div className="relative" ref={notifRef}>
+            {/* Operations Dropdown */}
+            {user?.role === 'Admin' && (
+              <div>
                 <button
-                  onClick={() => setShowNotifications(prev => !prev)}
-                  className="relative p-2 rounded-full text-gray-500 hover:text-ink hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-brand"
-                  aria-label="Notifications"
+                  onClick={() => setFoldersOpen(!foldersOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50/50 hover:text-gray-900 transition-all"
                 >
-                  <Bell className="w-4 h-4" />
-                  {unreadCount > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-1 right-1 w-2 h-2 bg-rust rounded-full ring-2 ring-white"
-                    />
-                  )}
+                  <div className="flex items-center gap-3">
+                    <Folder className="w-5 h-5 shrink-0" />
+                    <span>Asset Operations</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${foldersOpen ? 'transform rotate-180' : ''}`} />
                 </button>
 
-                <AnimatePresence>
-                  {showNotifications && (
+                <AnimatePresence initial={false}>
+                  {foldersOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-80 bg-white border border-line rounded-2xl shadow-xl z-50 overflow-hidden"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden flex flex-col pl-6 mt-1 gap-1 border-l border-gray-100 ml-5"
                     >
-                      <div className="px-4 pt-4 pb-2 border-b border-line bg-surface flex items-center justify-between">
-                        <span className="text-sm font-semibold text-ink">Notifications</span>
-                        <button
-                          onClick={() => setShowNotifications(false)}
-                          className="text-gray-400 hover:text-ink transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <NotificationStack
-                          notifications={notifications}
-                          onMarkRead={markAsRead}
-                          onMarkAllRead={markAllRead}
-                        />
-                      </div>
+                      <Link
+                        to="/bookings"
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
+                          ${location.pathname === '/bookings' ? 'text-brand font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                      >
+                        Resource Bookings
+                      </Link>
+                      <Link
+                        to="/audits"
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
+                          ${location.pathname === '/audits' ? 'text-brand font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                      >
+                        Physical Audits
+                      </Link>
+                      <Link
+                        to="/logs"
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all
+                          ${location.pathname === '/logs' ? 'text-brand font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                      >
+                        System Logs
+                      </Link>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
+            )}
 
-              {/* User avatar + name (desktop) */}
-              <div className="hidden md:flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-sm">
-                  {user?.name?.charAt(0) || <UserIcon className="w-4 h-4" />}
+            {user?.role === 'Admin' && <hr className="my-2 border-gray-200" />}
+
+            {/* Reports & Analytics Link */}
+            {user?.role === 'Admin' && (
+              <Link
+                to="/reports"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                  ${location.pathname === '/reports' 
+                    ? 'bg-gray-50 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                  }`}
+              >
+                <PieChart className="w-5 h-5 shrink-0" />
+                <span>Reports & Analytics</span>
+              </Link>
+            )}
+
+            {/* Org Setup Link */}
+            {user?.role === 'Admin' && (
+              <Link
+                to="/org-setup"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                  ${location.pathname === '/org-setup' 
+                    ? 'bg-gray-50 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                  }`}
+              >
+                <Settings className="w-5 h-5 shrink-0" />
+                <span>Org Setup</span>
+              </Link>
+            )}
+
+            {/* Maintenance Kanban Link */}
+            {user?.role === 'Admin' && (
+              <Link
+                to="/maintenance"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                  ${location.pathname === '/maintenance' 
+                    ? 'bg-gray-50 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Activity className="w-5 h-5 shrink-0" />
+                  <span>Maintenance Kanban</span>
                 </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-xs font-semibold text-ink max-w-[80px] truncate">{user?.name}</span>
-                  <span className="text-[10px] font-medium text-brand uppercase tracking-wider">{user?.role}</span>
-                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+              </Link>
+            )}
+
+            {/* Profile Settings Link */}
+            <Link
+              to="/profile"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/profile' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <UserIcon className="w-5 h-5 shrink-0 text-gray-500" />
+              <span>Profile Settings</span>
+            </Link>
+
+            {/* Help & FAQ Support Link with Online Badge */}
+            <Link
+              to="/help"
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+                ${location.pathname === '/help' 
+                  ? 'bg-gray-50 text-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-50/50 hover:text-gray-900'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <HelpCircle className="w-5 h-5 shrink-0" />
+                <span>Help & Support</span>
               </div>
+              <span className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                Online
+              </span>
+            </Link>
 
-              {/* Logout */}
-              <AlertDialog>
-                <AlertDialogTrigger
-                  render={
-                    <RippleButton
-                      variant="ghost"
-                      size="icon"
-                      title="Sign out"
-                      aria-label="Sign out"
-                      className="text-gray-400 hover:text-rust hover:bg-red-50"
+          </nav>
+        </div>
+
+        {/* Bottom Section: Profile + Notifications + Logout */}
+        <div className="flex flex-col gap-4 border-t border-gray-200 pt-4">
+          
+          {/* Notifications Trigger */}
+          <div className="relative w-full" ref={notifRef}>
+            <button
+              onClick={() => setShowNotifications(prev => !prev)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50/50 hover:text-gray-900 transition-all
+                ${showNotifications ? 'bg-gray-50 text-gray-900' : ''}`}
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 shrink-0 text-gray-500" />
+                <span>Notifications</span>
+              </div>
+              {unreadCount > 0 && (
+                <span className="bg-rust text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Dropdown Portal */}
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 bottom-12 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden"
+                >
+                  <div className="px-4 pt-4 pb-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-700">Notifications</span>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                      <LogOut className="w-4 h-4" />
-                    </RippleButton>
-                  }
-                />
-                <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action will sign you out of your current session. You will need to re-enter your credentials to access your dashboard.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleLogout}>Sign out</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogPopup>
-              </AlertDialog>
-            </div>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="p-3 max-h-[250px] overflow-y-auto">
+                    <NotificationStack
+                      notifications={notifications}
+                      onMarkRead={markAsRead}
+                      onMarkAllRead={markAllRead}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Right curved corner */}
-          <div className="w-12 h-full relative shrink-0">
-            <div
-              className="absolute inset-0 bg-white border-b border-r border-line"
-              style={{ clipPath: "path('M0 0 H48 V40 C24 40 24 64 0 64 Z')" }}
-            />
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 48 64" fill="none">
-              <path d="M0 63.5 C24 63.5 24 39.5 48 39.5" stroke="#DFE3E9" strokeWidth="0.75" />
-            </svg>
+          {/* User Profile Footer Card */}
+          <div className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200/50 rounded-xl p-3">
+            <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85">
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+                {user?.profile_picture ? (
+                  <img src={user.profile_picture} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-brand font-bold text-sm uppercase">{user?.name?.charAt(0)}</span>
+                )}
+              </div>
+              <div className="flex flex-col min-w-0 leading-tight">
+                <span className="text-xs font-bold text-gray-900 truncate">{user?.name}</span>
+                <span className="text-[10px] text-brand font-semibold uppercase mt-0.5 tracking-wider truncate">
+                  {user?.role}
+                </span>
+              </div>
+            </Link>
+
+            {/* Logout Confirm Trigger */}
+            <AlertDialog>
+              <AlertDialogTrigger>
+                <button
+                  className="text-gray-400 hover:text-rust transition-colors p-1"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4.5 h-4.5 shrink-0" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will sign you out of your current session.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLogout}>Sign out</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogPopup>
+            </AlertDialog>
           </div>
 
         </div>
-        {/* ── end notch pill ── */}
-
-        {/* Right side background bar */}
-        <div className="flex-1 h-10 bg-surface self-start pointer-events-none" />
-
-      </header>
+      </aside>
 
       {/* ================================================================
-          MOBILE DROPDOWN MENU (slides down from notch)
+          2. MOBILE HEADER & NAVIGATION - Mobile Viewports
           ================================================================ */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-ink/20 backdrop-blur-sm lg:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        <header className="md:hidden sticky top-0 z-40 h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between">
+          <button
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            className="p-2 rounded-xl text-gray-500 hover:bg-surface"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+          
+          <Link to="/" className="flex items-center">
+            <span className="text-lg font-bold text-brand">AssetFlow</span>
+          </Link>
 
-            {/* Drawer */}
-            <motion.div
-              initial={{ opacity: 0, y: -16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-              className="fixed inset-x-4 top-[72px] z-50 bg-white border border-line rounded-2xl shadow-2xl overflow-hidden lg:hidden"
-            >
-              {/* User info strip */}
-              <div className="flex items-center gap-3 px-4 py-3 bg-surface border-b border-line">
-                <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center text-white text-sm font-bold ring-2 ring-white">
-                  {user?.name?.charAt(0) || <UserIcon className="w-5 h-5" />}
+          <Link to="/profile" className="w-8 h-8 rounded-full overflow-hidden bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+            {user?.profile_picture ? (
+              <img src={user.profile_picture} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-brand font-bold text-xs uppercase">{user?.name?.charAt(0)}</span>
+            )}
+          </Link>
+        </header>
+
+        {/* Mobile menu dropdown drawer */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-30 bg-ink/20 backdrop-blur-sm md:hidden top-16"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-xl md:hidden p-4 flex flex-col gap-4 max-h-[calc(100vh-64px)] overflow-y-auto"
+              >
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Navigation Links</span>
+                  <nav className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: 'Dashboard', path: '/', icon: Home, visible: true },
+                      { name: 'Asset Directory', path: '/assets', icon: FolderOpen, visible: user?.role === 'Admin' },
+                      { name: 'Custody Allocations', path: '/allocations', icon: KeyRound, visible: user?.role === 'Admin' },
+                      { name: 'Resource Bookings', path: '/bookings', icon: ClipboardCheck, visible: user?.role === 'Admin' },
+                      { name: 'Physical Audits', path: '/audits', icon: ClipboardCheck, visible: user?.role === 'Admin' },
+                      { name: 'System Logs', path: '/logs', icon: Activity, visible: user?.role === 'Admin' },
+                      { name: 'Reports & Analytics', path: '/reports', icon: BarChart2, visible: user?.role === 'Admin' },
+                      { name: 'Org Setup', path: '/org-setup', icon: Settings, visible: user?.role === 'Admin' },
+                      { name: 'Profile Settings', path: '/profile', icon: UserIcon, visible: true },
+                      { name: 'Help & Support', path: '/help', icon: HelpCircle, visible: true },
+                      { name: 'Maintenance Kanban', path: '/maintenance', icon: ExternalLink, visible: user?.role === 'Admin' }
+                    ].filter(item => item.visible).map(item => {
+                      const Icon = item.icon;
+                      const isActive = location.pathname === item.path;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-xs font-semibold
+                            ${isActive ? 'bg-brand/10 text-brand' : 'text-gray-600 hover:bg-surface'}`}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
                 </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold text-ink">{user?.name}</span>
-                  <span className="text-xs font-medium text-brand uppercase tracking-wider">{user?.role}</span>
-                </div>
-              </div>
-
-              {/* Nav links */}
-              <nav className="flex flex-col p-2">
-                {allowedItems.map((item, idx) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                        ${isActive
-                          ? 'bg-brand/10 text-brand'
-                          : 'text-gray-600 hover:bg-surface hover:text-ink'
-                        }`}
-                    >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span>{item.name}</span>
-                      {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand" />}
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              {/* Logout row */}
-              <div className="border-t border-line p-2">
-                <AlertDialog>
-                  <AlertDialogTrigger
-                    render={
-                      <button
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rust hover:bg-red-50 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4 shrink-0" />
-                        <span>Sign out</span>
-                      </button>
-                    }
-                  />
-                  <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action will sign you out of your current session. You will need to re-enter your credentials to access your dashboard.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => { setMobileMenuOpen(false); handleLogout(); }}>
+                <div className="border-t border-gray-200 pt-3 flex justify-between items-center px-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center">
+                      <span className="text-brand font-bold text-xs uppercase">{user?.name?.charAt(0)}</span>
+                    </div>
+                    <span className="text-xs font-bold text-ink">{user?.name}</span>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger>
+                      <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rust hover:bg-red-50 transition-colors">
+                        <LogOut className="w-3.5 h-3.5" />
                         Sign out
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogPopup>
-                </AlertDialog>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will sign you out of your current session.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => { setMobileMenuOpen(false); handleLogout(); }}>
+                          Sign out
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogPopup>
+                  </AlertDialog>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
-      {/* ================================================================
-          PAGE CONTENT — offset below the 64px notch
-          ================================================================ */}
-      <main className="pt-20 min-h-screen bg-surface">
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* ================================================================
+            3. MAIN CONTENT PANEL
+            ================================================================ */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-surface">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -485,8 +561,8 @@ const Layout = ({ children, user, setUser }) => {
               {children}
             </motion.div>
           </AnimatePresence>
-        </div>
-      </main>
+        </main>
+      </div>
 
     </div>
   );

@@ -115,19 +115,25 @@ def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if user_in.email.split("@")[-1].lower() in disposable:
         raise HTTPException(400, "Disposable email addresses are not permitted.")
 
+    # Generate sequential employee ID: EMP-0001, EMP-0002...
+    last_user = db.query(models.User).order_by(models.User.id.desc()).first()
+    next_emp_num = 1 if not last_user else last_user.id + 1
+    employee_id_tag = f"EMP-{next_emp_num:04d}"
+
     new_user = models.User(
         name=user_in.name,
         email=user_in.email,
         password_hash=auth.get_password_hash(user_in.password),
         department_id=user_in.department_id,
         role="Employee",   # ALWAYS Employee — security requirement
-        status="Active"
+        status="Active",
+        employee_id_tag=employee_id_tag
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     log_activity(db, new_user.id, "SIGNUP", "users", new_user.id,
-                 f"Employee account created for {new_user.name}")
+                 f"Employee account created for {new_user.name} ({employee_id_tag})")
     return new_user
 
 
@@ -177,12 +183,28 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
         "name": user.name,
         "email": user.email,
         "id": user.id,
-        "department_id": user.department_id
+        "department_id": user.department_id,
+        "employee_id_tag": user.employee_id_tag
     }
 
 
-@router.get("/auth/me")
+@router.get("/auth/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+
+@router.put("/auth/profile", response_model=schemas.UserResponse)
+def update_profile(
+    profile_in: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    for field, val in profile_in.model_dump(exclude_none=True).items():
+        setattr(current_user, field, val)
+    db.commit()
+    db.refresh(current_user)
+    log_activity(db, current_user.id, "UPDATE_PROFILE", "users", current_user.id,
+                 f"Updated personal profile details")
     return current_user
 
 
@@ -460,6 +482,17 @@ def get_asset_by_id(asset_id: int, db: Session = Depends(get_db),
     result["allocation_history"] = alloc_history
     result["maintenance_history"] = maint_history
     return result
+
+
+@router.post("/assets/qr-log")
+def log_qr_scan(payload: dict, db: Session = Depends(get_db),
+                current_user: models.User = Depends(auth.get_current_user)):
+    tag = payload.get("tag")
+    asset = db.query(models.Asset).filter(models.Asset.tag == tag).first()
+    asset_id = asset.id if asset else 0
+    log_activity(db, current_user.id, "QR_SCAN", "assets", asset_id,
+                 f"Scanned QR Code for asset tag: {tag}")
+    return {"status": "success"}
 
 
 @router.put("/assets/{asset_id}")
@@ -882,11 +915,14 @@ def assign_maintenance(maint_id: int, assign: schemas.MaintenanceAssign,
         raise HTTPException(400, "Must be Approved before assigning.")
     req.status = "Assigned"
     req.technician_id = assign.technician_id
+    req.scheduled_time = assign.scheduled_time
+    if assign.duration_minutes:
+        req.duration_minutes = assign.duration_minutes
     db.commit()
     log_activity(db, current_user.id, "ASSIGN_MAINTENANCE", "maintenance_requests", req.id,
-                 f"Assigned technician {assign.technician_id} to {req.asset.tag}")
+                 f"Assigned technician {assign.technician_id} to {req.asset.tag} on {assign.scheduled_time}")
     notify_user(db, assign.technician_id, "TASK_ASSIGNED",
-                f"You are assigned to repair {req.asset.tag}.", f"maintenance:{req.id}")
+                f"You are assigned to repair {req.asset.tag} scheduled at {assign.scheduled_time}.", f"maintenance:{req.id}")
     return enrich_maintenance(req)
 
 
@@ -924,13 +960,56 @@ def resolve_maintenance(maint_id: int, action: schemas.MaintenanceResolve,
         raise HTTPException(400, "Must be In Progress to resolve.")
     req.status = "Resolved"
     req.resolution_notes = action.resolution_notes
+    req.parts_replaced = action.parts_replaced
     req.resolved_date = date.today()
     req.asset.status = "Available"
     db.commit()
     log_activity(db, current_user.id, "RESOLVE_MAINTENANCE", "maintenance_requests", req.id,
-                 f"Resolved {req.asset.tag} → Available. Notes: {action.resolution_notes}")
+                 f"Resolved {req.asset.tag} → Available. Notes: {action.resolution_notes}. Parts: {action.parts_replaced}")
     notify_user(db, req.raised_by_id, "MAINTENANCE_RESOLVED",
                 f"Maintenance for {req.asset.name} resolved.", f"maintenance:{req.id}")
+    return enrich_maintenance(req)
+
+
+@router.post("/maintenance/{maint_id}/extend")
+def extend_maintenance(maint_id: int, extend: schemas.MaintenanceExtendRequest,
+                       db: Session = Depends(get_db),
+                       current_user: models.User = Depends(auth.get_current_user)):
+    req = db.query(models.MaintenanceRequest).filter(
+        models.MaintenanceRequest.id == maint_id).first()
+    if not req:
+        raise HTTPException(404, "Maintenance record not found.")
+    if current_user.role not in ["Admin", "Asset Manager"] and \
+            req.technician_id != current_user.id:
+        raise HTTPException(403, "Not the assigned technician.")
+    
+    if not req.scheduled_time:
+         raise HTTPException(400, "Visit is not scheduled.")
+
+    # Extend duration
+    req.duration_minutes += extend.extension_minutes
+    
+    # Time-shifting subsequent visits scheduled for the same technician today
+    tech_id = req.technician_id
+    visit_date = req.scheduled_time.date()
+    
+    # Query all subsequent visits for this technician today
+    subsequent_visits = db.query(models.MaintenanceRequest).filter(
+        models.MaintenanceRequest.technician_id == tech_id,
+        models.MaintenanceRequest.id != req.id,
+        models.MaintenanceRequest.scheduled_time > req.scheduled_time,
+        models.MaintenanceRequest.status.notin_(["Resolved", "Rejected"])
+    ).all()
+    
+    shifted_count = 0
+    for v in subsequent_visits:
+         if v.scheduled_time.date() == visit_date:
+              v.scheduled_time += timedelta(minutes=extend.extension_minutes)
+              shifted_count += 1
+              
+    db.commit()
+    log_activity(db, current_user.id, "EXTEND_MAINTENANCE", "maintenance_requests", req.id,
+                 f"Extended maintenance task by {extend.extension_minutes} mins. Shifted {shifted_count} subsequent visits.")
     return enrich_maintenance(req)
 
 
@@ -943,7 +1022,8 @@ def get_maintenance(db: Session = Depends(get_db),
     else:
         reqs = db.query(models.MaintenanceRequest).filter(
             or_(models.MaintenanceRequest.raised_by_id == current_user.id,
-                models.MaintenanceRequest.technician_id == current_user.id)
+                models.MaintenanceRequest.technician_id == current_user.id,
+                models.MaintenanceRequest.status == "Approved") # Allow techs to see unassigned approved requests
         ).order_by(models.MaintenanceRequest.id.desc()).all()
     return [enrich_maintenance(m) for m in reqs]
 
@@ -1067,6 +1147,7 @@ def verify_audit_line(cycle_id: int, line_id: int, line_up: schemas.AuditLineUpd
 @router.post("/audits/{cycle_id}/close")
 def close_audit_cycle(cycle_id: int, db: Session = Depends(get_db),
                       current_user: models.User = Depends(auth.require_role(["Admin"]))):
+    import json
     cycle = db.query(models.AuditCycle).filter(models.AuditCycle.id == cycle_id).first()
     if not cycle:
         raise HTTPException(404, "Audit cycle not found.")
@@ -1078,25 +1159,56 @@ def close_audit_cycle(cycle_id: int, db: Session = Depends(get_db),
         raise HTTPException(400, f"Cannot close: {len(unverified)} assets still unverified.")
 
     cycle.status = "Closed"
-    missing_count = damaged_count = 0
+    missing_count = 0
+    damaged_count = 0
+    discrepancies = []
+
     for line in cycle.lines:
-        if line.result == "Missing":
-            line.asset.status = "Lost"
-            missing_count += 1
-            # Close active allocations
-            for alloc in db.query(models.Allocation).filter(
-                    models.Allocation.asset_id == line.asset_id,
-                    models.Allocation.state.in_(["approved", "overdue"])).all():
-                alloc.state = "returned"
-                alloc.actual_return_date = date.today()
-                alloc.checkin_notes = f"Auto-closed: asset flagged Lost in audit '{cycle.name}'"
-        elif line.result == "Damaged":
-            damaged_count += 1
+        has_variance = False
+        if line.result in ["Missing", "Damaged"]:
+            has_variance = True
+            if line.result == "Missing":
+                line.asset.status = "Lost"
+                missing_count += 1
+                # Close active allocations
+                for alloc in db.query(models.Allocation).filter(
+                        models.Allocation.asset_id == line.asset_id,
+                        models.Allocation.state.in_(["approved", "overdue"])).all():
+                    alloc.state = "returned"
+                    alloc.actual_return_date = date.today()
+                    alloc.checkin_notes = f"Auto-closed: asset flagged Lost in audit '{cycle.name}'"
+            elif line.result == "Damaged":
+                damaged_count += 1
+        
+        # Check if verified location differs from asset location
+        if line.notes and ("location" in line.notes.lower() or "wrong" in line.notes.lower()):
+            has_variance = True
+
+        if has_variance:
+            discrepancies.append({
+                "asset_tag": line.asset.tag if line.asset else "Unknown",
+                "asset_name": line.asset.name if line.asset else "Unknown",
+                "expected_location": line.asset.location if line.asset else "Unknown",
+                "result": line.result,
+                "notes": line.notes or "No notes provided",
+                "verified_by": line.verified_by.name if line.verified_by else "Unknown",
+                "verification_date": str(line.verification_date)
+            })
+
+    report_data = {
+        "cycle_id": cycle.id,
+        "cycle_name": cycle.name,
+        "close_date": str(date.today()),
+        "closed_by": current_user.name,
+        "total_assets": len(cycle.lines),
+        "discrepancies": discrepancies
+    }
+    cycle.discrepancy_report = json.dumps(report_data)
 
     db.commit()
     log_activity(db, current_user.id, "CLOSE_AUDIT", "audit_cycles", cycle.id,
-                 f"Closed audit '{cycle.name}'. Missing: {missing_count}, Damaged: {damaged_count}")
-    return {"message": "Audit closed.", "missing": missing_count, "damaged": damaged_count}
+                 f"Closed audit '{cycle.name}'. Discrepancies report generated. Missing: {missing_count}, Damaged: {damaged_count}")
+    return {"message": "Audit closed.", "missing": missing_count, "damaged": damaged_count, "report": report_data}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

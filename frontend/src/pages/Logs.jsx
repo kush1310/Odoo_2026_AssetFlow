@@ -69,15 +69,45 @@ const Logs = () => {
   };
 
   const tabs = [
-    { id: 'all',      label: 'All Activity',      icon: Activity  },
-    { id: 'system',   label: 'System Mutations',   icon: Database  },
-    { id: 'security', label: 'Access & Security',  icon: Lock      },
+    { id: 'all',       label: 'All Activity',   icon: Activity  },
+    { id: 'alerts',    label: 'Alerts & Security', icon: Lock      },
+    { id: 'approvals', label: 'Approvals & Custody', icon: CheckCircle2 },
+    { id: 'bookings',  label: 'Bookings & Logs', icon: Database  },
   ];
 
   const filteredLogs = logs.filter(log => {
-    if (activeTab === 'all')      return true;
-    if (activeTab === 'system')   return log.action_type === 'UPDATE' || log.action_type === 'DELETE';
-    if (activeTab === 'security') return log.action_type === 'CREATE'  || log.action_type === 'LOGIN';
+    const action = log.action_type || '';
+    const desc = (log.description || '').toLowerCase();
+    
+    if (activeTab === 'all') return true;
+    
+    if (activeTab === 'alerts') {
+      return action.includes('LOCKOUT') || 
+             action.includes('FAILED') || 
+             action.includes('REJECT') || 
+             desc.includes('locked') || 
+             desc.includes('failed') || 
+             desc.includes('discrepancy') ||
+             desc.includes('lost') ||
+             desc.includes('overdue');
+    }
+    
+    if (activeTab === 'approvals') {
+      return action.includes('APPROVE') || 
+             action.includes('RESOLVE') || 
+             action.includes('ASSIGN') || 
+             action.includes('TRANSFER') || 
+             desc.includes('allocated') ||
+             desc.includes('promoted');
+    }
+    
+    if (activeTab === 'bookings') {
+      return action.includes('BOOKING') || 
+             action.includes('ALLOCATION') || 
+             desc.includes('booked') ||
+             desc.includes('return');
+    }
+    
     return true;
   });
 

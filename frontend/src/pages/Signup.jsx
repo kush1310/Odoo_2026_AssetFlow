@@ -7,6 +7,7 @@ import GravityStars from '../components/ui/GravityStars';
 import RippleButton from '../components/ui/RippleButton';
 import AnimatedSelect from '../components/ui/AnimatedSelect';
 import { useToast } from '../components/Toast';
+import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -57,7 +58,15 @@ const Signup = () => {
       addToast("Account successfully registered! Proceeding to Log In.", "success");
       navigate('/login', { state: { message: 'Account created successfully. Please log in.' } });
     } catch (err) {
-      const errMsg = err.response?.data?.detail || 'Registration failed. Please check your details.';
+      let errMsg = err.response?.data?.detail;
+      if (typeof errMsg === 'object' && errMsg !== null) {
+        if (Array.isArray(errMsg)) {
+          errMsg = errMsg.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        } else {
+          errMsg = JSON.stringify(errMsg);
+        }
+      }
+      errMsg = errMsg || 'Registration failed. Please check your details.';
       setError(errMsg);
       addToast(errMsg, 'error');
     } finally {
@@ -84,8 +93,21 @@ const Signup = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative z-10 w-full max-w-[440px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col gap-6"
+        className="relative z-10 w-full max-w-[440px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col gap-6 overflow-hidden"
       >
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/90 backdrop-blur-[2px] flex items-center justify-center z-50"
+            >
+              <LoadingIndicator type="dot-circle" size="md" label="Creating Account..." />
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Header */}
         <div className="flex flex-col gap-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">

@@ -30,7 +30,15 @@ const ForgotPassword = () => {
         setDemoToken(res.data.reset_token);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.detail || "Email recovery failed. Please verify the email is registered.";
+      let errMsg = err.response?.data?.detail;
+      if (typeof errMsg === 'object' && errMsg !== null) {
+        if (Array.isArray(errMsg)) {
+          errMsg = errMsg.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        } else {
+          errMsg = JSON.stringify(errMsg);
+        }
+      }
+      errMsg = errMsg || "Email recovery failed. Please verify the email is registered.";
       setError(errMsg);
       addToast(errMsg, "error");
     } finally {

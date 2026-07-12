@@ -16,6 +16,7 @@ import Audits from './pages/Audits';
 import Reports from './pages/Reports';
 import Logs from './pages/Logs';
 import Help from './pages/Help';
+import Profile from './pages/Profile';
 
 // Helper component to guard private routes
 const PrivateRoute = ({ children, allowedRoles, user }) => {
@@ -67,10 +68,38 @@ function App() {
                 <Layout user={user} setUser={setUser}>
                   <Routes>
                     <Route path="/" element={<Dashboard user={user} />} />
-                    <Route path="/assets" element={<AssetDirectory user={user} />} />
-                    <Route path="/allocations" element={<Allocations user={user} />} />
-                    <Route path="/bookings" element={<Bookings user={user} />} />
-                    <Route path="/maintenance" element={<Maintenance user={user} />} />
+                    <Route 
+                      path="/assets" 
+                      element={
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
+                          <AssetDirectory user={user} />
+                        </PrivateRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/allocations" 
+                      element={
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
+                          <Allocations user={user} />
+                        </PrivateRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/bookings" 
+                      element={
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
+                          <Bookings user={user} />
+                        </PrivateRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/maintenance" 
+                      element={
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
+                          <Maintenance user={user} />
+                        </PrivateRoute>
+                      } 
+                    />
                     
                     {/* Scope restricted routes */}
                     <Route 
@@ -84,7 +113,7 @@ function App() {
                     <Route 
                       path="/audits" 
                       element={
-                        <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
                           <Audits user={user} />
                         </PrivateRoute>
                       } 
@@ -92,7 +121,7 @@ function App() {
                     <Route 
                       path="/reports" 
                       element={
-                        <PrivateRoute allowedRoles={['Admin', 'Asset Manager', 'Department Head']} user={user}>
+                        <PrivateRoute allowedRoles={['Admin']} user={user}>
                           <Reports user={user} />
                         </PrivateRoute>
                       } 
@@ -106,6 +135,7 @@ function App() {
                       } 
                     />
                     <Route path="/help" element={<Help user={user} />} />
+                    <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
                     
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
