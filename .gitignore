@@ -16,3 +16,11 @@ odoo.log
 *.pid
 data/
 odoo/
+
+# Frontend dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+.env.local
+.env.*.local
+
