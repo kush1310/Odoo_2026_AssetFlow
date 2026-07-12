@@ -4,6 +4,10 @@ from database import engine, Base, SessionLocal
 from routers.api import router as api_router
 import models
 import auth
+from dotenv import load_dotenv
+
+# Load Environment Variables
+load_dotenv()
 
 # Initialize Database Schema Tables
 Base.metadata.create_all(bind=engine)

@@ -21,6 +21,7 @@ odoo/
 node_modules/
 dist/
 dist-ssr/
+.env
 .env.local
 .env.*.local
 

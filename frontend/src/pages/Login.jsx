@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import { Key, Mail, ShieldAlert, Eye, EyeOff, Package } from 'lucide-react';
@@ -12,6 +12,61 @@ const Login = ({ setUser }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleLoginResponse = async (response) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', {
+        credential: response.credential
+      });
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('refresh_token', res.data.refresh_token);
+      localStorage.setItem('user', JSON.stringify({
+        email: res.data.email,
+        name: res.data.name,
+        role: res.data.role,
+        id: res.data.id
+      }));
+      setUser({
+        email: res.data.email,
+        name: res.data.name,
+        role: res.data.role,
+        id: res.data.id
+      });
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Google authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeGoogle = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "148457849994-fqjcj2hdmops0t4flvoh27aa7hopdmpi.apps.googleusercontent.com",
+          callback: handleGoogleLoginResponse
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("googleSignInDiv"),
+          { theme: "outline", size: "large", width: "100%" }
+        );
+      }
+    };
+
+    initializeGoogle();
+
+    const interval = setInterval(() => {
+      if (window.google) {
+        initializeGoogle();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,6 +207,14 @@ const Login = ({ setUser }) => {
               {loading ? "Authenticating..." : "Sign In"}
             </button>
           </form>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-line"></div>
+            <span className="flex-shrink mx-4 text-gray-400 text-xs font-medium">Or continue with</span>
+            <div className="flex-grow border-t border-line"></div>
+          </div>
+
+          <div id="googleSignInDiv" className="w-full flex justify-center"></div>
 
           <div className="text-center text-sm text-gray-500 pt-4 border-t border-line">
             <span>New here? </span>
