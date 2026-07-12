@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
-import { Mail, ShieldAlert, Package, CheckCircle, ArrowLeft } from 'lucide-react';
-import { motion } from 'framer-motion';
-import AssetTagChip from '../components/AssetTagChip';
+import { Key, ShieldAlert, CheckCircle, ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import GravityStars from '../components/ui/GravityStars';
+import RippleButton from '../components/ui/RippleButton';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -20,130 +21,124 @@ const ForgotPassword = () => {
     setLoading(true);
     try {
       const res = await api.post('/auth/forgot-password', { email });
-      setSuccess(res.data.message || "A reset link has been generated.");
+      setSuccess(res.data.message || "Reset token has been generated.");
       if (res.data.reset_token) {
         setDemoToken(res.data.reset_token);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || "Something went wrong. Please try again.");
+      setError(err.response?.data?.detail || "Email recovery failed. Please verify the email is registered.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-surface flex">
-      {/* Brand Panel (Left) */}
-      <div className="hidden lg:flex w-1/2 bg-brand p-12 flex-col justify-between relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 text-white mb-8">
-            <Package className="w-8 h-8" />
-            <span className="text-2xl font-bold tracking-tight font-sans">AssetFlow</span>
-          </div>
-          <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-            Recover Your<br />Account Access
-          </h2>
-          <p className="text-brand-deep text-lg max-w-md">
-            Enter your registered work email to verify identity and generate a secure password reset token.
+    <div className="min-h-screen relative overflow-hidden bg-[#F9FAFB] flex items-center justify-center p-4">
+      {/* Premium subtle stars background */}
+      <GravityStars starCount={40} starColor="#7F56D9" className="z-0 opacity-40" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 w-full max-w-[400px] bg-white border border-gray-100 rounded-2xl p-8 shadow-xl flex flex-col items-center gap-6"
+      >
+        {/* Key Icon inside styled frame — matches Image 1 */}
+        <div className="w-12 h-12 rounded-xl border border-gray-200 bg-white flex items-center justify-center shadow-sm">
+          <Key className="w-5 h-5 text-gray-700" />
+        </div>
+
+        {/* Title & Subtitle */}
+        <div className="flex flex-col gap-2 text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Forgot password?
+          </h1>
+          <p className="text-sm text-gray-500 max-w-[280px] mx-auto">
+            No worries, we'll send you reset instructions.
           </p>
         </div>
-        
-        {/* Animated Background Elements */}
-        <div className="absolute top-1/4 right-10 flex flex-col gap-4 opacity-70 transform rotate-12">
-          <AssetTagChip tag="RESET-AUTH" className="shadow-2xl scale-150" />
-        </div>
 
-        <div className="relative z-10 text-brand-deep text-sm font-medium">
-          © {new Date().getFullYear()} AssetFlow Systems Inc.
-        </div>
-      </div>
-
-      {/* Form Panel (Right) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md bg-white border border-line rounded-2xl p-8 shadow-xl flex flex-col gap-6"
-        >
-          <div className="flex flex-col gap-2">
-            <Link to="/login" className="text-xs text-gray-500 hover:text-brand flex items-center gap-1 mb-2">
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Log In
-            </Link>
-            <h1 className="text-2xl font-bold tracking-tight text-ink">
-              Forgot Password
-            </h1>
-            <p className="text-sm text-gray-500">Provide your account email address to receive a reset token</p>
-          </div>
-
+        {/* Error Alert */}
+        <AnimatePresence>
           {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-50 border border-rust text-rust text-sm rounded-lg flex items-center gap-3"
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="w-full overflow-hidden"
             >
-              <ShieldAlert className="w-5 h-5 shrink-0" />
-              <span>{error}</span>
+              <div className="flex items-center gap-2.5 p-3 bg-red-50 border border-red-100 text-rust text-xs rounded-lg font-medium">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
             </motion.div>
           )}
+        </AnimatePresence>
 
+        {/* Success Alert / Demo Token */}
+        <AnimatePresence>
           {success && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-green-50 border border-brand text-brand text-sm rounded-lg flex flex-col gap-2"
+              className="w-full p-4 bg-green-50 border border-green-100 text-brand text-xs rounded-xl flex flex-col gap-2"
             >
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 shrink-0 text-brand" />
+              <div className="flex items-center gap-2.5">
+                <CheckCircle className="w-4.5 h-4.5 shrink-0 text-green-600" />
                 <span className="font-semibold">{success}</span>
               </div>
               {demoToken && (
-                <div className="mt-2 pt-2 border-t border-brand/20 text-xs text-brand-deep">
-                  <span className="font-bold">Demo Mode Token Detected:</span>
-                  <div className="bg-white/80 p-2 rounded border border-brand/20 font-mono select-all break-all my-1.5 font-bold">
+                <div className="mt-2 pt-2 border-t border-green-200/50 text-[11px] text-brand-deep">
+                  <span className="font-bold">Demo reset token:</span>
+                  <div className="bg-white p-2 rounded border border-green-200 font-mono select-all break-all my-1.5 font-bold">
                     {demoToken}
                   </div>
-                  <Link 
+                  <Link
                     to={`/reset-password?token=${encodeURIComponent(demoToken)}`}
-                    className="underline font-bold hover:text-brand text-brand-deep text-xs mt-1 block"
+                    className="underline font-bold hover:text-brand text-brand-deep mt-1 block"
                   >
-                    Click here to instantly reset password with this token
+                    Click to reset instantly using this token
                   </Link>
                 </div>
               )}
             </motion.div>
           )}
+        </AnimatePresence>
 
-          {!success && (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <div>
-                <label className="label">Work Email</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                    <Mail className="w-4 h-4" />
-                  </span>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    className="input-field pl-10"
-                  />
-                </div>
-              </div>
+        {/* Form */}
+        {!success && (
+          <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7F56D9] focus:border-transparent transition-all"
+              />
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full py-2.5 mt-2 shadow-md shadow-brand/20 animate-pulse-slow"
-              >
-                {loading ? "Sending..." : "Request Reset Token"}
-              </button>
-            </form>
-          )}
-        </motion.div>
-      </div>
+            <RippleButton
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-[#7F56D9] text-white hover:bg-[#693FD0] rounded-lg shadow-sm font-semibold transition-colors mt-2"
+            >
+              {loading ? 'Sending...' : 'Reset password'}
+            </RippleButton>
+          </form>
+        )}
+
+        {/* Back Link */}
+        <Link
+          to="/login"
+          className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors mt-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to log in
+        </Link>
+      </motion.div>
     </div>
   );
 };
