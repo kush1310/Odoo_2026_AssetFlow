@@ -5,8 +5,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import bcrypt
 from sqlalchemy.orm import Session
-from .database import get_db
-from . import models, schemas
+from database import get_db
+import models
+import schemas
 
 # Secret keys for signing JWT
 SECRET_KEY = "CyberKush_Super_Secret_Jwt_Key_For_AssetFlow"

@@ -4,8 +4,10 @@ from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 
-from ..database import get_db
-from .. import models, schemas, auth
+from database import get_db
+import models
+import schemas
+import auth
 
 router = APIRouter(prefix="/api")
 
