@@ -21,6 +21,17 @@ import {
 import { useToast } from './Toast';
 import NotificationStack from './ui/NotificationStack';
 import RippleButton from './ui/RippleButton';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogPopup,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from './ui/AlertDialog';
 
 /**
  * NavLink
@@ -314,16 +325,33 @@ const Layout = ({ children, user, setUser }) => {
               </div>
 
               {/* Logout */}
-              <RippleButton
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                title="Sign out"
-                aria-label="Sign out"
-                className="text-gray-400 hover:text-rust hover:bg-red-50"
-              >
-                <LogOut className="w-4 h-4" />
-              </RippleButton>
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={
+                    <RippleButton
+                      variant="ghost"
+                      size="icon"
+                      title="Sign out"
+                      aria-label="Sign out"
+                      className="text-gray-400 hover:text-rust hover:bg-red-50"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </RippleButton>
+                  }
+                />
+                <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will sign you out of your current session. You will need to re-enter your credentials to access your dashboard.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleLogout}>Sign out</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogPopup>
+              </AlertDialog>
             </div>
           </div>
 
@@ -407,13 +435,32 @@ const Layout = ({ children, user, setUser }) => {
 
               {/* Logout row */}
               <div className="border-t border-line p-2">
-                <button
-                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rust hover:bg-red-50 transition-colors"
-                >
-                  <LogOut className="w-4 h-4 shrink-0" />
-                  <span>Sign out</span>
-                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={
+                      <button
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rust hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 shrink-0" />
+                        <span>Sign out</span>
+                      </button>
+                    }
+                  />
+                  <AlertDialogPopup from="bottom" className="sm:max-w-[420px]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will sign you out of your current session. You will need to re-enter your credentials to access your dashboard.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => { setMobileMenuOpen(false); handleLogout(); }}>
+                        Sign out
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogPopup>
+                </AlertDialog>
               </div>
             </motion.div>
           </>
